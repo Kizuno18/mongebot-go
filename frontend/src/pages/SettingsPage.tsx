@@ -234,6 +234,9 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Webhooks */}
+      <WebhookSection />
+
       {/* Appearance */}
       <ThemeSection />
 
@@ -419,6 +422,114 @@ function ThemeSection() {
           )}
         </button>
       </div>
+    </div>
+  );
+}
+
+function WebhookSection() {
+  const [webhooks, setWebhooks] = useState<any[]>([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newType, setNewType] = useState<"discord" | "telegram" | "generic">("discord");
+  const [newName, setNewName] = useState("");
+  const [newURL, setNewURL] = useState("");
+
+  useEffect(() => {
+    ipc.call<any[]>("webhook.list").then(setWebhooks).catch(() => {});
+  }, []);
+
+  const handleAdd = async () => {
+    if (!newName || !newURL) return;
+    try {
+      await ipc.call("webhook.add", {
+        name: newName,
+        type: newType,
+        url: newURL,
+        enabled: true,
+        events: ["*"],
+      });
+      setNewName("");
+      setNewURL("");
+      setShowAdd(false);
+      ipc.call<any[]>("webhook.list").then(setWebhooks).catch(() => {});
+    } catch { /* ignore */ }
+  };
+
+  const handleTest = async (id: string) => {
+    await ipc.call("webhook.test", { id });
+  };
+
+  const handleRemove = async (id: string) => {
+    await ipc.call("webhook.remove", { id });
+    setWebhooks(webhooks.filter((w) => w.id !== id));
+  };
+
+  const typeIcons: Record<string, string> = {
+    discord: "Discord",
+    telegram: "Telegram",
+    generic: "HTTP",
+  };
+
+  return (
+    <div className="card space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield size={18} className="text-rose-400" />
+          <h2 className="text-lg font-semibold text-gray-200">Webhooks</h2>
+        </div>
+        <button
+          className="btn-ghost text-xs flex items-center gap-1"
+          onClick={() => setShowAdd(!showAdd)}
+        >
+          + Add Webhook
+        </button>
+      </div>
+
+      <p className="text-xs text-gray-500">
+        Receive notifications on Discord, Telegram, or any HTTP endpoint when events occur.
+      </p>
+
+      {showAdd && (
+        <div className="p-3 rounded-lg bg-gray-800/30 space-y-3 animate-fade-in">
+          <div className="grid grid-cols-3 gap-2">
+            {(["discord", "telegram", "generic"] as const).map((t) => (
+              <button
+                key={t}
+                className={`py-2 rounded-lg text-xs font-medium transition-colors ${
+                  newType === t ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" : "bg-gray-800 text-gray-500 border border-gray-800"
+                }`}
+                onClick={() => setNewType(t)}
+              >
+                {typeIcons[t]}
+              </button>
+            ))}
+          </div>
+          <input className="input-field text-sm" placeholder="Webhook name" value={newName} onChange={(e) => setNewName(e.target.value)} />
+          <input className="input-field text-sm font-mono" placeholder={newType === "discord" ? "Discord webhook URL" : newType === "telegram" ? "Bot token" : "HTTP endpoint URL"} value={newURL} onChange={(e) => setNewURL(e.target.value)} />
+          <div className="flex justify-end gap-2">
+            <button className="btn-ghost text-xs" onClick={() => setShowAdd(false)}>Cancel</button>
+            <button className="btn-primary text-xs" onClick={handleAdd}>Add</button>
+          </div>
+        </div>
+      )}
+
+      {webhooks.length === 0 && !showAdd && (
+        <p className="text-xs text-gray-600 text-center py-3">No webhooks configured</p>
+      )}
+
+      {webhooks.map((w) => (
+        <div key={w.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-800/30">
+          <div className="flex items-center gap-3">
+            <span className="badge-info text-[10px]">{typeIcons[w.type] || w.type}</span>
+            <span className="text-sm text-gray-200">{w.name}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="btn-ghost text-[10px] py-1 px-2" onClick={() => handleTest(w.id)}>Test</button>
+            <button className="text-gray-600 hover:text-red-400 transition-colors" onClick={() => handleRemove(w.id)}>
+              <ToggleRight size={14} />
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

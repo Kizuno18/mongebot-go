@@ -164,6 +164,24 @@ func main() {
 	})
 	_ = monitor // Available for channel watching via scheduler
 
+	// Setup webhook manager for Discord/Telegram/HTTP notifications
+	webhookMgr := engine.NewWebhookManager(logger)
+	api.SetWebhookManager(webhookMgr)
+
+	// Wire stream monitor to send webhook notifications
+	monitor.OnEvent(func(event engine.StreamEvent) {
+		eventType := "stream.offline"
+		title := fmt.Sprintf("%s went offline", event.Channel)
+		if event.Status.String() == "online" {
+			eventType = "stream.online"
+			title = fmt.Sprintf("%s is LIVE!", event.Channel)
+		}
+		webhookMgr.Notify(ctx, eventType, title, "", map[string]string{
+			"Channel":  event.Channel,
+			"Platform": event.Platform,
+		})
+	})
+
 	// Setup metrics persistence (saves snapshots to SQLite every 30s)
 	var persister *engine.MetricsPersister
 	if db != nil {

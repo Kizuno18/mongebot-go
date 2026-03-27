@@ -171,6 +171,15 @@ func (v *Viewer) Start(ctx context.Context) error {
 		errCh <- chat.Connect(ctx)
 	}()
 
+	// Auto-claim channel points bonus (runs in background)
+	go func() {
+		claimer := NewPointsClaimer(v.client, v.config.Token, v.channelID, PointsAutoClaimConfig{
+			Enabled:  true,
+			Interval: 5 * time.Minute,
+		}, v.logger)
+		errCh <- claimer.Run(ctx)
+	}()
+
 	// Wait for any loop to return an error or context cancellation
 	select {
 	case err := <-errCh:

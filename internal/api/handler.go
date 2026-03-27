@@ -48,7 +48,12 @@ func (s *Server) getHandler(method string) (handlerFunc, bool) {
 	}
 
 	// Check system handlers
-	return getSystemHandler(method)
+	if h, ok := getSystemHandler(method); ok {
+		return h, true
+	}
+
+	// Check webhook handlers
+	return getWebhookHandler(method)
 }
 
 // --- Engine Handlers ---
