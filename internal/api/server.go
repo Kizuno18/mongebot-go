@@ -82,6 +82,9 @@ func (s *Server) Start(ctx context.Context) error {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
+	// Prometheus metrics endpoint
+	mux.HandleFunc("/metrics", PrometheusHandler(s))
+
 	addr := fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
