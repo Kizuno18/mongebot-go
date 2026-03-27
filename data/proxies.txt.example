@@ -1,0 +1,13 @@
+# MongeBot Proxy List
+# Supported formats:
+#   ip:port
+#   ip:port:username:password
+#   http://ip:port
+#   http://user:pass@ip:port
+#   socks5://user:pass@ip:port
+#
+# Lines starting with # are ignored.
+# Example entries (replace with real proxies):
+# 1.2.3.4:8080
+# 5.6.7.8:3128:myuser:mypass
+# socks5://admin:secret@10.0.0.1:1080

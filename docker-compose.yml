@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: mongebot-backend
+    volumes:
+      - mongebot-data:/app/data
+    ports:
+      - "9800:9800"
+    restart: unless-stopped
+    environment:
+      - MONGEBOT_MODE=headless
+      - MONGEBOT_API_PORT=9800
+      - MONGEBOT_LOG_LEVEL=info
+
+volumes:
+  mongebot-data:
+    driver: local
