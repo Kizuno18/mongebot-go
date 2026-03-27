@@ -10,7 +10,7 @@ services:
       - "9800:9800"
     restart: unless-stopped
     environment:
-      - MONGEBOT_MODE=headless
+      - MONGEBOT_MODE=sidecar
       - MONGEBOT_API_PORT=9800
       - MONGEBOT_LOG_LEVEL=info
 
