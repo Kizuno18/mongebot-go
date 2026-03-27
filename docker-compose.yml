@@ -12,6 +12,7 @@ services:
     environment:
       - MONGEBOT_MODE=sidecar
       - MONGEBOT_API_PORT=9800
+      - MONGEBOT_API_HOST=0.0.0.0
       - MONGEBOT_LOG_LEVEL=info
 
 volumes:
