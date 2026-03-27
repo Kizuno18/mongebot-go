@@ -31,6 +31,9 @@ type EngineConfig struct {
 	GQLPulseInterval  RangeConfig   `json:"gqlPulseInterval"`
 	ProxyTimeout      Duration      `json:"proxyTimeout"`
 	MaxRetries        int           `json:"maxRetries"`
+	StickyProxy       bool          `json:"stickyProxy"`       // Keep same proxy for entire viewer session
+	BehaviorProfile   string        `json:"behaviorProfile"`   // lurker, active, engaged, stealth, rotating, random
+	MultiChannel      bool          `json:"multiChannel"`      // Enable multi-channel mode
 	Features          FeatureFlags  `json:"features"`
 }
 

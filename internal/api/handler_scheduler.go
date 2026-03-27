@@ -45,6 +45,13 @@ func getSchedulerHandler(method string) (handlerFunc, bool) {
 
 		// Channel search
 		"channel.search": handleChannelSearch,
+
+		// Behavior profiles
+		"behavior.list": handleBehaviorList,
+
+		// Drops tracking
+		"drops.progress": handleDropsProgress,
+		"drops.points":   handleDropsPoints,
 	}
 
 	h, ok := handlers[method]
@@ -214,4 +221,45 @@ func handleChannelSearch(ctx context.Context, params json.RawMessage) (any, erro
 		return nil, fmt.Errorf("channel search failed: %w", err)
 	}
 	return results, nil
+}
+
+// --- Behavior profile handlers ---
+
+func handleBehaviorList(_ context.Context, _ json.RawMessage) (any, error) {
+	profiles := make(map[string]any)
+	for name, p := range engine.Profiles {
+		profiles[name] = map[string]any{
+			"name":        p.Name,
+			"description": p.Desc,
+			"chatChance":  p.ChatJoinChance,
+			"adChance":    p.AdWatchChance,
+		}
+	}
+	return profiles, nil
+}
+
+// --- Drops handlers ---
+
+type dropsPointsParams struct {
+	ChannelID string `json:"channelId"`
+}
+
+func handleDropsPoints(ctx context.Context, params json.RawMessage) (any, error) {
+	var p dropsPointsParams
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, err
+	}
+	if p.ChannelID == "" {
+		return nil, fmt.Errorf("channelId required")
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	tracker := twitch.NewDropsTracker(client, "") // Token from extended deps
+	return tracker.GetChannelPoints(ctx, p.ChannelID)
+}
+
+func handleDropsProgress(ctx context.Context, _ json.RawMessage) (any, error) {
+	client := &http.Client{Timeout: 15 * time.Second}
+	tracker := twitch.NewDropsTracker(client, "")
+	return tracker.GetDropsProgress(ctx)
 }

@@ -20,7 +20,10 @@ func DefaultConfig() *AppConfig {
 				Max: Duration{7 * time.Minute},
 			},
 			ProxyTimeout: Duration{60 * time.Second},
-			MaxRetries:   3,
+			MaxRetries:      3,
+			StickyProxy:     true,
+			BehaviorProfile: "random",
+			MultiChannel:    false,
 			Features: FeatureFlags{
 				Ads:      true,
 				Chat:     true,

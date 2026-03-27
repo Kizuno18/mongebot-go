@@ -45,9 +45,9 @@ func (p *Provider) SupportedFeatures() []platform.Feature {
 	}
 }
 
-// Connect creates a new KickViewer for the given configuration.
+// Connect creates a new KickViewer with full HLS support.
 func (p *Provider) Connect(ctx context.Context, cfg *platform.ViewerConfig) (platform.Viewer, error) {
-	viewer := NewViewer(cfg, p.logger)
+	viewer := NewFullViewer(cfg, p.logger)
 	return viewer, nil
 }
 
