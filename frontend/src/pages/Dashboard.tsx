@@ -16,6 +16,7 @@ import {
 import { useMetrics, useEngineControl } from "../hooks/useIPC";
 import { ViewersChart, BandwidthChart } from "../components/MetricsChart";
 import MultiChannelCards from "../components/MultiChannelCards";
+import ChannelSearch from "../components/ChannelSearch";
 
 // Formats bytes into human-readable string.
 function formatBytes(bytes: number): string {
@@ -79,17 +80,13 @@ export default function Dashboard() {
       {/* Quick Controls */}
       <div className="card">
         <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              className="input-field"
-              placeholder="Channel name (e.g., streamer_name)"
-              value={channel}
-              onChange={(e) => setChannel(e.target.value)}
-              disabled={isRunning}
-              onKeyDown={(e) => e.key === "Enter" && handleStart()}
-            />
-          </div>
+          <ChannelSearch
+            value={channel}
+            onChange={setChannel}
+            onSelect={(ch) => setChannel(ch.login)}
+            disabled={isRunning}
+            placeholder="Search channel or type name..."
+          />
 
           <div className="flex items-center gap-2 bg-gray-800 rounded-lg p-1">
             <button

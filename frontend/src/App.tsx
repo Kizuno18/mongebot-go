@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Network,
@@ -18,6 +18,7 @@ import { useKeyboard, useWindowTitle } from "./hooks/useKeyboard";
 import StatusBar from "./components/StatusBar";
 import ConnectionOverlay from "./components/ConnectionOverlay";
 import OnboardingWizard from "./components/OnboardingWizard";
+import KeyboardHelp from "./components/KeyboardHelp";
 import Dashboard from "./pages/Dashboard";
 import ProxyManager from "./pages/ProxyManager";
 import TokenVault from "./pages/TokenVault";
@@ -54,6 +55,21 @@ export default function App() {
   const [setupComplete, setSetupComplete] = useState(
     () => localStorage.getItem("mongebot-setup-complete") === "true",
   );
+  const [showHelp, setShowHelp] = useState(false);
+
+  // ? key opens help overlay
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+      if (e.key === "?") {
+        e.preventDefault();
+        setShowHelp((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const connected = useConnection();
   const metrics = useMetrics();
   const { stop } = useEngineControl();
@@ -147,6 +163,9 @@ export default function App() {
 
       {/* Connection overlay when disconnected */}
       <ConnectionOverlay connected={connected} />
+
+      {/* Keyboard shortcut help overlay */}
+      <KeyboardHelp open={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   );
 }
