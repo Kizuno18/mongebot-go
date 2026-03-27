@@ -141,10 +141,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create engine
+	// Load .env file (optional, doesn't override existing env vars)
+	config.LoadDotEnv(".env")
+	config.ApplyEnvOverrides(cfg, logger)
+
+	// Create single-channel engine
 	eng := engine.New(activePlatform, proxyMgr, tokenMgr.GetValidValues(), uaPool, cfg.GetEngine(), logger)
 
-	// Setup stream monitor
+	// Create multi-channel engine
+	multiEng := engine.NewMultiEngine(activePlatform, proxyMgr, tokenMgr.GetValidValues(), uaPool, cfg.GetEngine(), logger)
+
+	// Create scheduler
+	scheduler := engine.NewScheduler(multiEng, activePlatform, logger)
+
+	// Setup stream monitor with event broadcasting
 	monitor := engine.NewStreamMonitor(activePlatform, logger, 30*time.Second)
 	monitor.OnEvent(func(event engine.StreamEvent) {
 		logger.Info("stream event",
@@ -152,6 +162,14 @@ func main() {
 			"status", event.Status.String(),
 		)
 	})
+	_ = monitor // Available for channel watching via scheduler
+
+	// Setup metrics persistence (saves snapshots to SQLite every 30s)
+	var persister *engine.MetricsPersister
+	if db != nil {
+		persister = engine.NewMetricsPersister(db, eng, logger, 30*time.Second)
+		_ = persister // Will be used when engine starts
+	}
 
 	// Set extended API deps
 	api.SetExtendedDeps(&api.ExtendedDeps{
@@ -160,6 +178,12 @@ func main() {
 		StreamMgr:    streamMgr,
 		ProxyScraper: proxyScraper,
 		Storage:      db,
+	})
+
+	// Set scheduler API deps
+	api.SetSchedulerDeps(&api.SchedulerDeps{
+		MultiEngine: multiEng,
+		Scheduler:   scheduler,
 	})
 
 	switch *mode {

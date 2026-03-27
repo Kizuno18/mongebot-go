@@ -161,14 +161,16 @@ func (v *Vault) SetTokenValidity(id string, valid bool) error {
 	return v.Save()
 }
 
-// Save encrypts and writes the vault to disk.
+// Save encrypts and writes the vault to disk using the current key.
 func (v *Vault) Save() error {
-	// Generate a fresh salt on each save for forward secrecy
+	// Use a dummy salt for the file header — the key is already derived
+	// and kept in memory from Open(). We generate a new random nonce
+	// each time for GCM security.
 	salt := make([]byte, saltSize)
 	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
 		return fmt.Errorf("generating salt: %w", err)
 	}
-	v.key = deriveKey("", salt) // Reuse existing derived key
+	// Key stays the same (derived at Open time) — only nonce changes per save
 	return v.save(salt)
 }
 
