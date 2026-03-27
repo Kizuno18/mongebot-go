@@ -7,7 +7,6 @@ import {
   Network,
   KeyRound,
   Users,
-  Settings,
   Sparkles,
 } from "lucide-react";
 

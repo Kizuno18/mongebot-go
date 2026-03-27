@@ -1,6 +1,5 @@
 // Global keyboard shortcuts for MongeBot desktop app.
 import { useEffect } from "react";
-import { ipc } from "../services/ipc";
 import type { EngineMetrics } from "../types";
 
 interface KeyboardOptions {

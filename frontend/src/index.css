@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @layer base {
   :root {
@@ -11,70 +9,131 @@
   }
 
   body {
-    @apply bg-gray-950 text-gray-100 font-sans antialiased;
+    background-color: rgb(3 7 18);
+    color: rgb(243 244 246);
+    font-family: system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
     overflow: hidden;
     user-select: none;
   }
 
-  /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-gray-900;
+    background: rgb(17 24 39);
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-700 rounded-full;
+    background: rgb(55 65 81);
+    border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-600;
+    background: rgb(75 85 99);
   }
 }
 
 @layer components {
   .card {
-    @apply bg-gray-900/80 border border-gray-800 rounded-xl p-4 backdrop-blur-sm;
+    background-color: rgb(17 24 39 / 0.8);
+    border: 1px solid rgb(31 41 55);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    backdrop-filter: blur(4px);
   }
 
   .btn-primary {
-    @apply px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg
-           font-medium transition-colors duration-150 disabled:opacity-50
-           disabled:cursor-not-allowed;
+    padding: 0.5rem 1rem;
+    background-color: rgb(37 99 235);
+    color: white;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: background-color 150ms;
   }
+  .btn-primary:hover { background-color: rgb(59 130 246); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .btn-danger {
-    @apply px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg
-           font-medium transition-colors duration-150;
+    padding: 0.5rem 1rem;
+    background-color: rgb(220 38 38);
+    color: white;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: background-color 150ms;
   }
+  .btn-danger:hover { background-color: rgb(239 68 68); }
 
   .btn-ghost {
-    @apply px-4 py-2 hover:bg-gray-800 text-gray-300 rounded-lg
-           font-medium transition-colors duration-150;
+    padding: 0.5rem 1rem;
+    color: rgb(209 213 219);
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: background-color 150ms;
   }
+  .btn-ghost:hover { background-color: rgb(31 41 55); }
 
   .input-field {
-    @apply w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2
-           text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2
-           focus:ring-blue-500/50 focus:border-blue-500 transition-all;
+    width: 100%;
+    background-color: rgb(31 41 55);
+    border: 1px solid rgb(55 65 81);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: rgb(243 244 246);
+    transition: all 150ms;
+  }
+  .input-field::placeholder { color: rgb(107 114 128); }
+  .input-field:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(59 130 246 / 0.5);
+    border-color: rgb(59 130 246);
   }
 
   .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
   }
 
   .badge-success {
-    @apply badge bg-emerald-500/20 text-emerald-400;
+    display: inline-flex; align-items: center; padding: 0.125rem 0.5rem;
+    border-radius: 9999px; font-size: 0.75rem; font-weight: 500;
+    background-color: rgb(16 185 129 / 0.2);
+    color: rgb(52 211 153);
   }
 
   .badge-warning {
-    @apply badge bg-amber-500/20 text-amber-400;
+    display: inline-flex; align-items: center; padding: 0.125rem 0.5rem;
+    border-radius: 9999px; font-size: 0.75rem; font-weight: 500;
+    background-color: rgb(245 158 11 / 0.2);
+    color: rgb(251 191 36);
   }
 
   .badge-danger {
-    @apply badge bg-red-500/20 text-red-400;
+    display: inline-flex; align-items: center; padding: 0.125rem 0.5rem;
+    border-radius: 9999px; font-size: 0.75rem; font-weight: 500;
+    background-color: rgb(239 68 68 / 0.2);
+    color: rgb(248 113 113);
   }
 
   .badge-info {
-    @apply badge bg-blue-500/20 text-blue-400;
+    display: inline-flex; align-items: center; padding: 0.125rem 0.5rem;
+    border-radius: 9999px; font-size: 0.75rem; font-weight: 500;
+    background-color: rgb(59 130 246 / 0.2);
+    color: rgb(96 165 250);
   }
 }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in { animation: fadeIn 0.2s ease-out; }
+.animate-slide-up { animation: slideUp 0.2s ease-out; }

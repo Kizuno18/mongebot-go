@@ -1,10 +1,8 @@
 import { useState } from "react";
 import {
-  KeyRound,
   Upload,
   ShieldCheck,
   ShieldX,
-  ShieldAlert,
   Lock,
 } from "lucide-react";
 

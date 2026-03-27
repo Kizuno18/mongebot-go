@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Save,
-  RotateCcw,
   Sliders,
   Cpu,
   Shield,
@@ -16,7 +15,7 @@ import {
 } from "lucide-react";
 import { ipc } from "../services/ipc";
 import type { AppConfig } from "../types";
-import { loadPrefs, savePrefs, applyTheme, availableAccents, type Theme, type AccentColor } from "../stores/theme";
+import { loadPrefs, savePrefs, applyTheme, availableAccents } from "../stores/theme";
 
 export default function SettingsPage() {
   const [config, setConfig] = useState<AppConfig | null>(null);

@@ -3,7 +3,6 @@ import {
   Upload,
   RefreshCw,
   Trash2,
-  Shield,
   Globe,
   Wifi,
   WifiOff,

@@ -25,13 +25,6 @@ interface MetricsChartProps {
   maxPoints?: number;
 }
 
-// Formats bytes to human-readable for chart tooltip.
-function fmtBytes(b: number): string {
-  if (b < 1024) return `${b} B`;
-  if (b < 1048576) return `${(b / 1024).toFixed(0)} KB`;
-  return `${(b / 1048576).toFixed(1)} MB`;
-}
-
 export function ViewersChart({ metrics, maxPoints = 60 }: MetricsChartProps) {
   const [data, setData] = useState<DataPoint[]>([]);
   const prevBytes = useRef(0);
@@ -153,7 +146,7 @@ export function BandwidthChart({ metrics, maxPoints = 60 }: MetricsChartProps) {
             borderRadius: "8px",
             fontSize: "12px",
           }}
-          formatter={(value: number) => [`${value.toFixed(1)} KB/s`, "Bandwidth"]}
+          formatter={(value) => [`${Number(value).toFixed(1)} KB/s`, "Bandwidth"]}
         />
         <Bar dataKey="kbps" fill="#10b981" radius={[2, 2, 0, 0]} name="KB/s" />
       </BarChart>

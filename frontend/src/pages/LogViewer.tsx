@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Download, Filter, Trash2 } from "lucide-react";
+import { Download, Filter } from "lucide-react";
 import { useLogs } from "../hooks/useIPC";
 import type { LogEntry } from "../types";
 

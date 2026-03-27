@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import {
   Zap,
-  Github,
   Cpu,
   Globe,
   Database,
   Activity,
   Shield,
   Package,
-  ExternalLink,
 } from "lucide-react";
 import { ipc } from "../services/ipc";
 
