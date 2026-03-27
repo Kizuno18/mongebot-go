@@ -105,10 +105,14 @@ func main() {
 	// Proxy scraper
 	proxyScraper := proxy.NewScraper(logger)
 
-	// User-agent pool
+	// User-agent pool with auto-updater
 	uaPool := useragent.NewPool()
 	uaPool.LoadFromFile("data/user-agents.txt")
 	logger.Info("user agents loaded", "count", uaPool.Count())
+
+	// Start UA auto-updater in background (refreshes every 24h)
+	uaUpdater := useragent.NewUpdater(uaPool, logger)
+	go uaUpdater.AutoUpdate(ctx, 24*time.Hour)
 
 	// Token manager
 	tokenMgr := token.NewManager(logger)

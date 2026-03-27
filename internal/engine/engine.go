@@ -54,6 +54,9 @@ type Engine struct {
 	cancel     context.CancelFunc
 	channel    string
 
+	// Rate limit tracking
+	rateLimiter *RateLimitTracker
+
 	// Event callbacks (for API layer)
 	onMetrics func(*AggregatedMetrics)
 	onLog     func(string, string) // level, message
@@ -75,13 +78,14 @@ type AggregatedMetrics struct {
 // New creates a new Engine.
 func New(p platform.Platform, proxyMgr *proxy.Manager, tokens []string, uaPool *useragent.Pool, cfg config.EngineConfig, logger *slog.Logger) *Engine {
 	e := &Engine{
-		platform: p,
-		proxyMgr: proxyMgr,
-		tokens:   tokens,
-		uaPool:   uaPool,
-		cfg:      cfg,
-		logger:   logger.With("component", "engine"),
-		workers:  make(map[string]*Worker),
+		platform:    p,
+		proxyMgr:    proxyMgr,
+		tokens:      tokens,
+		uaPool:      uaPool,
+		cfg:         cfg,
+		logger:      logger.With("component", "engine"),
+		workers:     make(map[string]*Worker),
+		rateLimiter: NewRateLimitTracker(logger),
 	}
 	e.state.Store(int32(StateStopped))
 	return e
@@ -226,15 +230,14 @@ func (e *Engine) spawnWorker(ctx context.Context, index int) error {
 		DeviceID:  fingerprint.GenerateDeviceID(),
 	}
 
-	viewer, err := e.platform.Connect(ctx, viewerCfg)
-	if err != nil {
-		e.proxyMgr.Release(p)
-		return fmt.Errorf("creating viewer: %w", err)
-	}
+	// Wrap viewer with auto-reconnection
+	reconnectViewer := NewReconnectingViewer(
+		e.platform, viewerCfg, DefaultReconnectConfig(), e.logger,
+	)
 
 	w := &Worker{
 		id:       viewerCfg.DeviceID,
-		viewer:   viewer,
+		viewer:   reconnectViewer,
 		proxy:    p,
 		proxyMgr: e.proxyMgr,
 	}
