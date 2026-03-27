@@ -16,6 +16,8 @@ import { useConnection, useMetrics, useEngineControl } from "./hooks/useIPC";
 import { useStreamNotifications } from "./hooks/useNotifications";
 import { useKeyboard, useWindowTitle } from "./hooks/useKeyboard";
 import StatusBar from "./components/StatusBar";
+import ConnectionOverlay from "./components/ConnectionOverlay";
+import OnboardingWizard from "./components/OnboardingWizard";
 import Dashboard from "./pages/Dashboard";
 import ProxyManager from "./pages/ProxyManager";
 import TokenVault from "./pages/TokenVault";
@@ -49,6 +51,9 @@ const navItems: NavItem[] = [
 
 export default function App() {
   const [activePage, setActivePage] = useState<Page>("dashboard");
+  const [setupComplete, setSetupComplete] = useState(
+    () => localStorage.getItem("mongebot-setup-complete") === "true",
+  );
   const connected = useConnection();
   const metrics = useMetrics();
   const { stop } = useEngineControl();
@@ -61,6 +66,11 @@ export default function App() {
     onNavigate: (page) => setActivePage(page as Page),
     metrics,
   });
+
+  // Show onboarding wizard on first run
+  if (!setupComplete) {
+    return <OnboardingWizard onComplete={() => setSetupComplete(true)} />;
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -134,6 +144,9 @@ export default function App() {
         </div>
         <StatusBar connected={connected} metrics={metrics} />
       </main>
+
+      {/* Connection overlay when disconnected */}
+      <ConnectionOverlay connected={connected} />
     </div>
   );
 }
