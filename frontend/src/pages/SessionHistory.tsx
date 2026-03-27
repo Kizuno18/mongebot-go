@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { History, Clock, Eye, HardDrive, Tv, TrendingUp } from "lucide-react";
+import { History, Clock, Eye, HardDrive, Tv, TrendingUp, Download } from "lucide-react";
 import { ipc } from "../services/ipc";
 
 interface Session {
@@ -60,11 +60,53 @@ export default function SessionHistory() {
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-100">Session History</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Past bot sessions with performance metrics
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-100">Session History</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Past bot sessions with performance metrics
+          </p>
+        </div>
+        {sessions.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              className="btn-ghost flex items-center gap-2 text-sm"
+              onClick={async () => {
+                try {
+                  const result = await ipc.call<{ data: string }>("sessions.export", { format: "csv", limit: 100 });
+                  const blob = new Blob([result.data], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `mongebot-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch { /* ignore */ }
+              }}
+            >
+              <Download size={14} />
+              Export CSV
+            </button>
+            <button
+              className="btn-ghost flex items-center gap-2 text-sm"
+              onClick={async () => {
+                try {
+                  const result = await ipc.call<{ data: string }>("sessions.export", { format: "json", limit: 100 });
+                  const blob = new Blob([result.data], { type: "application/json" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `mongebot-sessions-${new Date().toISOString().slice(0, 10)}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch { /* ignore */ }
+              }}
+            >
+              <Download size={14} />
+              Export JSON
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Sessions */}

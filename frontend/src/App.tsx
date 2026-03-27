@@ -124,6 +124,18 @@ export default function App() {
         {/* Spacer */}
         <div className="flex-1" />
 
+        {/* Live viewer count badge (when running) */}
+        {metrics?.engineState === "running" && (
+          <div
+            className="w-11 rounded-lg bg-blue-600/20 py-1 text-center mb-1"
+            title={`${metrics.activeViewers} active viewers`}
+          >
+            <span className="text-[10px] font-bold text-blue-400">
+              {metrics.activeViewers}
+            </span>
+          </div>
+        )}
+
         {/* Connection status */}
         <div className="mb-2" title={connected ? "Connected" : "Disconnected"}>
           <Radio
