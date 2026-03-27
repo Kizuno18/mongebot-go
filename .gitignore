@@ -9,11 +9,16 @@ bin/
 *.out
 vendor/
 
-# Data (sensitive)
+# Data (sensitive + runtime)
 data/tokens.txt
 data/proxies.txt
 data/logged_out_tokens.txt
+data/config.json
+data/profiles.json
+data/mongebot.db*
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 
 # Logs
