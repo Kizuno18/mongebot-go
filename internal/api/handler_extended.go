@@ -20,6 +20,7 @@ type ExtendedDeps struct {
 	TokenMgr     *token.Manager
 	StreamMgr    *stream.Manager
 	ProxyScraper *proxy.Scraper
+	ProxyMgr     *proxy.Manager
 	Storage      *storage.DB
 }
 
@@ -290,11 +291,16 @@ func handleProxyScrape(ctx context.Context, _ json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("proxy scraper not initialized")
 	}
 
-	proxies, err := globalExtDeps.ProxyScraper.Scrape(ctx)
+	if globalExtDeps.ProxyMgr == nil {
+		return nil, fmt.Errorf("proxy manager not initialized")
+	}
+
+	added, err := globalExtDeps.ProxyScraper.ScrapeAndImport(ctx, globalExtDeps.ProxyMgr)
 	if err != nil {
 		return nil, err
 	}
-	return map[string]int{"found": len(proxies)}, nil
+	total, available, _ := globalExtDeps.ProxyMgr.Count()
+	return map[string]any{"added": added, "total": total, "available": available}, nil
 }
 
 // --- Session Handler ---

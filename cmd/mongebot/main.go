@@ -199,6 +199,7 @@ func main() {
 		TokenMgr:     tokenMgr,
 		StreamMgr:    streamMgr,
 		ProxyScraper: proxyScraper,
+		ProxyMgr:     proxyMgr,
 		Storage:      db,
 	})
 
