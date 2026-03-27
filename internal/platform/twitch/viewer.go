@@ -544,17 +544,18 @@ func parseBestStreamURL(m3u8Content string) string {
 
 	for i, line := range lines {
 		if strings.HasPrefix(line, "#EXT-X-STREAM-INF:") {
-			// Extract BANDWIDTH value
-			for _, part := range strings.Split(line, ",") {
-				if strings.HasPrefix(part, "BANDWIDTH=") {
-					var bw int
-					fmt.Sscanf(part, "BANDWIDTH=%d", &bw)
-					if bw > bestBandwidth {
-						bestBandwidth = bw
-						if i+1 < len(lines) {
-							bestURL = strings.TrimSpace(lines[i+1])
-						}
-					}
+			// Extract BANDWIDTH value using direct string search
+			// (avoids comma-split issues with quoted CODECS fields)
+			bwIdx := strings.Index(line, "BANDWIDTH=")
+			if bwIdx == -1 {
+				continue
+			}
+			var bw int
+			fmt.Sscanf(line[bwIdx:], "BANDWIDTH=%d", &bw)
+			if bw > bestBandwidth {
+				bestBandwidth = bw
+				if i+1 < len(lines) {
+					bestURL = strings.TrimSpace(lines[i+1])
 				}
 			}
 		}

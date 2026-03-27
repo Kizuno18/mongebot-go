@@ -39,9 +39,16 @@ func TestOpenAndMigrate(t *testing.T) {
 	}
 }
 
+func createTestProfile(t *testing.T, db *DB, id string) {
+	t.Helper()
+	repo := NewProfileRepo(db)
+	repo.Create(context.Background(), &ProfileRow{ID: id, Name: "Test", Platform: "twitch", Channel: "ch"})
+}
+
 func TestSessionLifecycle(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()
+	createTestProfile(t, db, "profile-1")
 
 	// Insert session
 	sessionID, err := db.InsertSession(ctx, "profile-1", "streamer_name", "twitch")
@@ -89,11 +96,12 @@ func TestMetricsTimeline(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()
 
+	createTestProfile(t, db, "p1")
 	sessionID, _ := db.InsertSession(ctx, "p1", "ch1", "twitch")
 
 	// Insert 3 snapshots
 	for i := range 3 {
-		db.InsertMetricsSnapshot(ctx, sessionID, 10+i, 50, int64(i)*100, int64(i)*1024, i*10, i)
+		db.InsertMetricsSnapshot(ctx, sessionID, 10+i, 50, i*100, int64(i)*1024, i*10, i)
 	}
 
 	timeline, err := db.GetMetricsTimeline(ctx, sessionID)
@@ -108,6 +116,7 @@ func TestMetricsTimeline(t *testing.T) {
 func TestSessionStats(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()
+	createTestProfile(t, db, "p1")
 
 	// Create 2 sessions with different metrics
 	id1, _ := db.InsertSession(ctx, "p1", "ch1", "twitch")

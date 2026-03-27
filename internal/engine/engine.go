@@ -255,7 +255,7 @@ func (e *Engine) spawnWorker(ctx context.Context, index int) error {
 			e.workersMu.Unlock()
 		}()
 
-		if err := viewer.Start(ctx); err != nil {
+		if err := reconnectViewer.Start(ctx); err != nil {
 			e.logger.Debug("worker finished", "id", w.id[:8], "error", err)
 		}
 	}()
