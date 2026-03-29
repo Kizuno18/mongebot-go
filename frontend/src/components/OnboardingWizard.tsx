@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ipc } from "../services/ipc";
 import {
   Zap,
   ArrowRight,
@@ -44,8 +45,30 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
     }
   };
 
-  const handleFinish = () => {
-    // Save the setup flag to localStorage
+  const handleFinish = async () => {
+    // Import data via IPC
+    try {
+      const proxyLines = proxyText.split("\n").filter((l) => l.trim());
+      if (proxyLines.length > 0) {
+        await ipc.call("proxy.import", { proxies: proxyLines });
+      }
+
+      const tokenLines = tokenText.split("\n").filter((l) => l.trim());
+      if (tokenLines.length > 0) {
+        await ipc.call("token.import", { tokens: tokenLines, platform: "twitch" });
+      }
+
+      if (channelName.trim()) {
+        await ipc.call("profile.create", {
+          name: profileName || channelName,
+          platform: "twitch",
+          channel: channelName.trim(),
+        });
+      }
+    } catch {
+      // Best-effort — don't block onboarding on errors
+    }
+
     localStorage.setItem("mongebot-setup-complete", "true");
     onComplete();
   };

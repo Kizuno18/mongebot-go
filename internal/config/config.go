@@ -113,13 +113,24 @@ func Load(path string) (*AppConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Create default config file
+			cfg.Version = CurrentVersion
 			if saveErr := cfg.Save(); saveErr != nil {
 				return nil, fmt.Errorf("creating default config: %w", saveErr)
 			}
 			return cfg, nil
 		}
 		return nil, fmt.Errorf("reading config: %w", err)
+	}
+
+	// Run config migrations if needed (v0→v1→v2)
+	migrator := NewMigrator(nil)
+	migratedData, migrated, migrateErr := migrator.MigrateIfNeeded(data)
+	if migrateErr != nil {
+		return nil, fmt.Errorf("config migration: %w", migrateErr)
+	}
+	if migrated {
+		data = migratedData
+		os.WriteFile(path, data, 0o644) // Save migrated config
 	}
 
 	if err := json.Unmarshal(data, cfg); err != nil {

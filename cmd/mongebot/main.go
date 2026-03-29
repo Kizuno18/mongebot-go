@@ -28,6 +28,7 @@ import (
 	"github.com/Kizuno18/mongebot-go/internal/storage"
 	"github.com/Kizuno18/mongebot-go/internal/stream"
 	"github.com/Kizuno18/mongebot-go/internal/token"
+	"github.com/Kizuno18/mongebot-go/internal/vault"
 	"github.com/Kizuno18/mongebot-go/pkg/useragent"
 )
 
@@ -114,11 +115,17 @@ func main() {
 	uaUpdater := useragent.NewUpdater(uaPool, logger)
 	go uaUpdater.AutoUpdate(ctx, 24*time.Hour)
 
-	// Token manager
+	// Token manager — try vault first, fall back to plain text
 	tokenMgr := token.NewManager(logger)
-	rawTokens := loadTokensFromFile("data/tokens.txt")
-	if len(rawTokens) > 0 {
-		tokenMgr.AddBulk(rawTokens, "twitch")
+	vaultTokens := loadTokensFromVault("data/vault.enc", logger)
+	if len(vaultTokens) > 0 {
+		tokenMgr.AddBulk(vaultTokens, "twitch")
+		logger.Info("tokens loaded from vault", "count", len(vaultTokens))
+	} else {
+		rawTokens := loadTokensFromFile("data/tokens.txt")
+		if len(rawTokens) > 0 {
+			tokenMgr.AddBulk(rawTokens, "twitch")
+		}
 	}
 	tTotal, tValid, _, _, _ := tokenMgr.Stats()
 	logger.Info("tokens loaded", "total", tTotal, "valid", tValid)
@@ -155,8 +162,9 @@ func main() {
 	// Create multi-channel engine
 	multiEng := engine.NewMultiEngine(activePlatform, proxyMgr, tokenMgr.GetValidValues(), uaPool, cfg.GetEngine(), logger)
 
-	// Create scheduler
+	// Create scheduler and auto-start enabled rules
 	scheduler := engine.NewScheduler(multiEng, activePlatform, logger)
+	scheduler.Start(ctx)
 
 	// Setup stream monitor with event broadcasting
 	monitor := engine.NewStreamMonitor(activePlatform, logger, 30*time.Second)
@@ -187,10 +195,12 @@ func main() {
 	})
 
 	// Setup metrics persistence (saves snapshots to SQLite every 30s)
-	var persister *engine.MetricsPersister
 	if db != nil {
-		persister = engine.NewMetricsPersister(db, eng, logger, 30*time.Second)
-		_ = persister // Will be used when engine starts
+		persister := engine.NewMetricsPersister(db, eng, logger, 30*time.Second)
+		// Auto-start session tracking for the default profile
+		if profile := cfg.GetActiveProfile(); profile != nil {
+			persister.StartSession(ctx, profile.ID, profile.Channel, profile.Platform)
+		}
 	}
 
 	// Set extended API deps
@@ -200,6 +210,8 @@ func main() {
 		StreamMgr:    streamMgr,
 		ProxyScraper: proxyScraper,
 		ProxyMgr:     proxyMgr,
+		Platform:     activePlatform,
+		Logger:       logger,
 		Storage:      db,
 	})
 
@@ -288,4 +300,19 @@ func loadTokensFromFile(path string) []string {
 		}
 	}
 	return tokens
+}
+
+func loadTokensFromVault(path string, logger *slog.Logger) []string {
+	passphrase := os.Getenv("MONGEBOT_VAULT_PASSPHRASE")
+	if passphrase == "" {
+		return nil // No vault passphrase — skip vault
+	}
+
+	v, err := vault.Open(path, passphrase)
+	if err != nil {
+		logger.Warn("vault open failed, falling back to plain text", "error", err)
+		return nil
+	}
+
+	return v.GetValidTokenValues("")
 }

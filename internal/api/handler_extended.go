@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"log/slog"
+
 	"github.com/Kizuno18/mongebot-go/internal/account"
 	"github.com/Kizuno18/mongebot-go/internal/config"
+	"github.com/Kizuno18/mongebot-go/internal/platform"
 	"github.com/Kizuno18/mongebot-go/internal/proxy"
 	"github.com/Kizuno18/mongebot-go/internal/storage"
 	"github.com/Kizuno18/mongebot-go/internal/stream"
@@ -21,6 +24,8 @@ type ExtendedDeps struct {
 	StreamMgr    *stream.Manager
 	ProxyScraper *proxy.Scraper
 	ProxyMgr     *proxy.Manager
+	Platform     platform.Platform
+	Logger       *slog.Logger
 	Storage      *storage.DB
 }
 
@@ -211,9 +216,9 @@ func handleTokenValidate(ctx context.Context, _ json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("token manager not initialized")
 	}
 
-	// Run validation asynchronously — results come via event.tokenValidation events
+	// Run validation asynchronously
 	go func() {
-		validator := token.NewValidator(globalExtDeps.TokenMgr, nil, nil) // Platform set via extended deps
+		validator := token.NewValidator(globalExtDeps.TokenMgr, globalExtDeps.Platform, globalExtDeps.Logger)
 		validator.ValidateAll(context.Background(), "")
 	}()
 
@@ -345,17 +350,22 @@ func handleSessionStats(ctx context.Context, _ json.RawMessage) (any, error) {
 }
 
 func handleProxyGeoEnrich(ctx context.Context, _ json.RawMessage) (any, error) {
-	// Runs async — return ack
+	if globalExtDeps.ProxyMgr == nil {
+		return nil, fmt.Errorf("proxy manager not initialized")
+	}
 	go func() {
-		enricher := proxy.NewGeoEnricher(nil) // Logger will be nil-safe
-		// Would need proxyMgr reference — for now just ack
-		_ = enricher
+		enricher := proxy.NewGeoEnricher(globalExtDeps.Logger)
+		enricher.EnrichAll(context.Background(), globalExtDeps.ProxyMgr)
 	}()
-	return map[string]string{"status": "geo enrichment started"}, nil
+	total, _, _ := globalExtDeps.ProxyMgr.Count()
+	return map[string]any{"status": "geo enrichment started", "proxies": total}, nil
 }
 
 func handleProxyGeoStats(_ context.Context, _ json.RawMessage) (any, error) {
-	return map[string]string{"status": "not yet implemented"}, nil
+	if globalExtDeps.ProxyMgr == nil {
+		return nil, fmt.Errorf("proxy manager not initialized")
+	}
+	return proxy.GetCountryStats(globalExtDeps.ProxyMgr), nil
 }
 
 // --- Config Archive Handlers ---
