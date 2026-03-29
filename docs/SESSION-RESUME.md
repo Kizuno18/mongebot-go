@@ -256,13 +256,26 @@ O primeiro prompt foi uma instrucao para **reescrever o mongebot de Python para 
 7. Adicionei MongeBot na navigation sidebar
 8. Push branch, criou PR #20 no dash-kizubot
 
-### Rodada 12 — Documentacao (agora)
-**O que estou fazendo:**
-1. Reescrevendo README.md (completo, com API reference)
-2. Escrevendo architecture.md (design tecnico)
-3. Escrevendo todo.md (roadmap priorizado)
-4. Escrevendo plan.md (plano de fases)
-5. Escrevendo este SESSION-RESUME.md
+### Rodada 12 — Documentacao
+**O que fiz:**
+1. Reescrevi README.md (completo, com API reference dos 51 methods)
+2. Reescrevi architecture.md (design tecnico, viewer lifecycle, diagrams)
+3. Criei todo.md (40+ items priorizados)
+4. Criei plan.md (4 fases v2.0.1→v3.0.0)
+5. Criei este SESSION-RESUME.md
+
+### Rodada 13 — Revisao de Pontos Cegos
+**O que fiz:**
+1. Auditei todos os 21 pontos cegos com grep/audit automatizado
+2. **Corrigido:** Config migration agora roda automaticamente em Load()
+3. **Corrigido:** Vault token loading wired (MONGEBOT_VAULT_PASSPHRASE env)
+4. **Corrigido:** Token validate handler recebe Platform + Logger reais
+5. **Corrigido:** Proxy geo enrichment chama GeoEnricher.EnrichAll() real
+6. **Corrigido:** Proxy geoStats retorna GetCountryStats() real
+7. **Corrigido:** Platform e Logger adicionados ao ExtendedDeps
+8. **Corrigido:** Scheduler.Start(ctx) chamado no boot
+9. **Corrigido:** Metrics persister auto-inicia sessao para profile ativo
+10. **Corrigido:** Onboarding wizard chama proxy.import, token.import, profile.create via IPC
 
 ---
 
@@ -289,28 +302,33 @@ O primeiro prompt foi uma instrucao para **reescrever o mongebot de Python para 
 
 ## 4. PONTOS CEGOS IDENTIFICADOS
 
-### O que NAO foi feito (conscientemente)
-1. **Testes E2E** — Nao tem Playwright/Cypress para o frontend
-2. **Testes de integracao API** — Os 51 handlers nao tem testes unitarios individuais
-3. **Token real testado** — Nao importei tokens reais do Twitch, entao o fluxo viewer→stream nao foi testado end-to-end
-4. **YouTube viewer real** — Provider eh um stub, nao busca segments
-5. **Kick chat Pusher** — Implementado HLS mas nao o chat via Pusher WebSocket
-6. **SQLite profile migration** — account.Manager ainda usa JSON file, nao SQLite (repository.go existe mas nao esta wired)
-7. **Config migration nao esta wired** — migrate.go existe mas Load() nao chama MigrateIfNeeded()
-8. **Vault nao esta wired no main.go** — main.go le tokens de arquivo texto, nao do vault
-9. **Scheduler nao esta wired ao monitor** — Scheduler existe mas nao inicia automaticamente
-10. **Metrics persister nao cria sessao** — persister existe mas main.go nao chama StartSession
-11. **Circuit breaker nao esta wired** — circuitbreaker.go existe mas nenhum viewer usa
-12. **Proxy chains nao estao wired** — chain.go existe mas engine nao usa
-13. **Proxy geo enrichment handler e placeholder** — retorna ack sem fazer nada
-14. **Token validate handler nao tem platform reference** — passa nil para Validator
-15. **Webhook config nao persiste** — webhooks ficam em memoria, perdem no restart
-16. **Behavior profiles nao estao wired no viewer** — profiles existem mas viewer usa timings fixos
-17. **Frontend nao usa tema light completamente** — CSS vars setadas mas components usam cores hardcoded do Tailwind
-18. **ChannelSearch precisa de token para funcionar** — GQL search requer auth, retorna vazio sem token
-19. **MultiChannelCards poll multi.status que requer MultiEngine** — funciona mas nenhuma UI permite multi-start
-20. **Onboarding wizard nao importa dados realmente** — coleta input mas nao chama IPC
-21. **Session export download nao funciona no Tauri** — usa blob URL que pode nao funcionar no webview
+### Pontos cegos — Status apos revisao
+
+| # | Ponto Cego | Status | Notas |
+|---|-----------|--------|-------|
+| 1 | Testes E2E (Playwright/Cypress) | ABERTO | Nao implementado |
+| 2 | Testes de integracao para 51 API handlers | ABERTO | Nao implementado |
+| 3 | Token real testado end-to-end | ABERTO | Depende de tokens reais do usuario |
+| 4 | YouTube viewer real (busca segments) | ABERTO | Stub apenas |
+| 5 | Kick chat Pusher WebSocket | ABERTO | Apenas HLS implementado |
+| 6 | Account Manager → SQLite migration | ABERTO | Usa JSON file, repository.go existe mas nao wired |
+| 7 | Config migration em Load() | **CORRIGIDO** | MigrateIfNeeded() agora roda automaticamente |
+| 8 | Vault wired no main.go | **CORRIGIDO** | Carrega via MONGEBOT_VAULT_PASSPHRASE env, fallback para txt |
+| 9 | Scheduler auto-start | **CORRIGIDO** | scheduler.Start(ctx) chamado no boot |
+| 10 | Metrics persister StartSession | **CORRIGIDO** | Auto-inicia sessao para profile ativo |
+| 11 | Circuit breaker nos viewers | ABERTO | Existe mas nao wired nos HTTP calls |
+| 12 | Proxy chains no engine | ABERTO | chain.go existe mas engine usa proxies diretos |
+| 13 | Proxy geo enrichment handler | **CORRIGIDO** | Agora chama GeoEnricher.EnrichAll() real |
+| 14 | Token validate com platform ref | **CORRIGIDO** | Passa Platform + Logger reais do ExtendedDeps |
+| 15 | Webhook config persistencia | ABERTO | Webhooks em memoria, perdem no restart |
+| 16 | Behavior profiles no viewer | ABERTO | Profiles existem mas viewer usa timings fixos |
+| 17 | Light theme completo | ABERTO | 92 ocorrencias de cores hardcoded dark |
+| 18 | ChannelSearch precisa token | ABERTO | GQL search requer auth |
+| 19 | MultiChannelCards acessivel do Dashboard | OK | MultiChannelCards esta no Dashboard com add inline |
+| 20 | Onboarding wizard IPC calls | **CORRIGIDO** | Agora chama proxy.import, token.import, profile.create |
+| 21 | Session export no Tauri | ABERTO | Blob URL pode nao funcionar no webview |
+
+**Resumo: 7 corrigidos, 1 OK, 13 abertos (requerem trabalho futuro ou dados reais)**
 
 ### O que funciona 100%
 1. Go build compila sem erros
