@@ -56,28 +56,12 @@ export default function ProxyManager() {
     }
   };
 
-  const [scraping, setScraping] = useState(false);
-  const [scrapeResult, setScrapeResult] = useState<number | null>(null);
 
   const handleCheckAll = async () => {
     try {
       await ipc.call("proxy.check");
     } catch {
       // Ignore
-    }
-  };
-
-  const handleScrape = async () => {
-    setScraping(true);
-    setScrapeResult(null);
-    try {
-      const result = await ipc.call<{ found: number }>("proxy.scrape");
-      setScrapeResult(result.found);
-      loadProxies(); // Refresh list
-    } catch {
-      setScrapeResult(-1);
-    } finally {
-      setScraping(false);
     }
   };
 
@@ -92,14 +76,7 @@ export default function ProxyManager() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            className="btn-ghost flex items-center gap-2"
-            onClick={handleScrape}
-            disabled={scraping}
-          >
-            <Globe size={16} className={scraping ? "animate-spin" : ""} />
-            {scraping ? "Scraping..." : "Auto-Scrape"}
-          </button>
+
           <button className="btn-ghost flex items-center gap-2" onClick={handleCheckAll}>
             <RefreshCw size={16} />
             Check All
@@ -130,23 +107,7 @@ export default function ProxyManager() {
         </div>
       </div>
 
-      {/* Scrape Result */}
-      {scrapeResult !== null && (
-        <div
-          className={`card flex items-center gap-3 animate-fade-in ${
-            scrapeResult >= 0
-              ? "bg-emerald-500/5 border-emerald-500/20"
-              : "bg-red-500/5 border-red-500/20"
-          }`}
-        >
-          <Globe size={18} className={scrapeResult >= 0 ? "text-emerald-400" : "text-red-400"} />
-          <p className="text-sm">
-            {scrapeResult >= 0
-              ? `Found ${scrapeResult} proxies from public APIs. Added to pool.`
-              : "Scraping failed. Check your network connection."}
-          </p>
-        </div>
-      )}
+
 
       {/* Import Panel */}
       {showImport && (

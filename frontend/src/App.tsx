@@ -21,7 +21,7 @@ import OnboardingWizard from "./components/OnboardingWizard";
 import KeyboardHelp from "./components/KeyboardHelp";
 import Dashboard from "./pages/Dashboard";
 import ProxyManager from "./pages/ProxyManager";
-import TokenVault from "./pages/TokenVault";
+import TokenManager from "./pages/TokenManager";
 import ProfilesPage from "./pages/ProfilesPage";
 import StreamMonitor from "./pages/StreamMonitor";
 import SessionHistory from "./pages/SessionHistory";
@@ -162,7 +162,7 @@ export default function App() {
           {activePage === "dashboard" && <Dashboard />}
           {activePage === "profiles" && <ProfilesPage />}
           {activePage === "proxies" && <ProxyManager />}
-          {activePage === "tokens" && <TokenVault />}
+          {activePage === "tokens" && <TokenManager />}
           {activePage === "stream" && <StreamMonitor />}
           {activePage === "history" && <SessionHistory />}
           {activePage === "scheduler" && <SchedulerPage />}

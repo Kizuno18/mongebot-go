@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Kizuno18/mongebot-go/internal/platform"
+	"github.com/Kizuno18/mongebot-go/internal/proxy"
 )
 
 // ValidationResult holds the outcome of validating a single token.
@@ -68,7 +69,7 @@ func (v *Validator) OnResult(fn func(ValidationResult)) {
 }
 
 // ValidateAll checks all tokens in the manager concurrently.
-func (v *Validator) ValidateAll(ctx context.Context, proxyURL string) ValidationProgress {
+func (v *Validator) ValidateAll(ctx context.Context, proxyMgr *proxy.Manager) ValidationProgress {
 	tokens := v.manager.All()
 	total := len(tokens)
 
@@ -97,7 +98,17 @@ func (v *Validator) ValidateAll(ctx context.Context, proxyURL string) Validation
 				wg.Done()
 			}()
 
-			result := v.validateOne(ctx, t, proxyURL)
+			var pURL string
+			var p *proxy.Proxy
+			if proxyMgr != nil {
+				p = proxyMgr.Acquire()
+				if p != nil {
+					pURL = p.URL()
+					defer proxyMgr.Release(p)
+				}
+			}
+
+			result := v.validateOne(ctx, t, pURL)
 
 			switch result.Status {
 			case platform.TokenValid:

@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"github.com/Kizuno18/mongebot-go/internal/proxy"
 )
 
 // handlerFunc is the signature for RPC method handlers.
@@ -144,7 +146,10 @@ func (s *Server) handleProxyImport(_ context.Context, params json.RawMessage) (a
 }
 
 func (s *Server) handleProxyCheck(_ context.Context, _ json.RawMessage) (any, error) {
-	// Placeholder - will be implemented with async proxy health checking
+	go func() {
+		checker := proxy.NewChecker(s.logger)
+		checker.CheckAll(context.Background(), s.proxyMgr, nil)
+	}()
 	return map[string]string{"status": "check started"}, nil
 }
 

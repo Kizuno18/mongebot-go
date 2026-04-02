@@ -433,7 +433,7 @@ function WebhookSection() {
   const [newURL, setNewURL] = useState("");
 
   useEffect(() => {
-    ipc.call<any[]>("webhook.list").then(setWebhooks).catch(() => {});
+    ipc.call<any[]>("webhook.list").then(data => setWebhooks(data || [])).catch(() => {});
   }, []);
 
   const handleAdd = async () => {
@@ -449,7 +449,7 @@ function WebhookSection() {
       setNewName("");
       setNewURL("");
       setShowAdd(false);
-      ipc.call<any[]>("webhook.list").then(setWebhooks).catch(() => {});
+      ipc.call<any[]>("webhook.list").then(data => setWebhooks(data || [])).catch(() => {});
     } catch { /* ignore */ }
   };
 

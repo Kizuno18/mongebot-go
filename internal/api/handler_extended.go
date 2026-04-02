@@ -219,7 +219,7 @@ func handleTokenValidate(ctx context.Context, _ json.RawMessage) (any, error) {
 	// Run validation asynchronously
 	go func() {
 		validator := token.NewValidator(globalExtDeps.TokenMgr, globalExtDeps.Platform, globalExtDeps.Logger)
-		validator.ValidateAll(context.Background(), "")
+		validator.ValidateAll(context.Background(), globalExtDeps.ProxyMgr)
 	}()
 
 	total, _, _, _, _ := globalExtDeps.TokenMgr.Stats()

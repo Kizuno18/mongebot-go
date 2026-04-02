@@ -5,6 +5,7 @@ package token
 import (
 	"context"
 	"log/slog"
+	"os"
 	"sync"
 	"time"
 
@@ -82,6 +83,7 @@ func (m *Manager) AddBulk(values []string, plat string) int {
 	}
 
 	added := 0
+	var addedTokens []string
 	for _, val := range values {
 		if val == "" || existing[val] {
 			continue
@@ -93,6 +95,21 @@ func (m *Manager) AddBulk(values []string, plat string) int {
 		})
 		existing[val] = true
 		added++
+		addedTokens = append(addedTokens, val)
+	}
+
+	if len(addedTokens) > 0 {
+		go func(newTokens []string) {
+			f, err := os.OpenFile("data/tokens.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				m.logger.Error("failed to open tokens.txt for append", "error", err)
+				return
+			}
+			defer f.Close()
+			for _, t := range newTokens {
+				f.WriteString(t + "\n")
+			}
+		}(addedTokens)
 	}
 
 	m.logger.Info("tokens added", "added", added, "total", len(m.tokens))
