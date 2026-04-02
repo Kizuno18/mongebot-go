@@ -4,24 +4,23 @@
 
 These modules exist but are not connected to the main flow.
 
-
-- [ ] Wire config migration into config.Load() (call MigrateIfNeeded before parse)
-- [ ] Wire behavior profiles into viewer (use profile timings instead of hardcoded)
-- [ ] Wire circuit breaker into viewer HTTP calls (wrap GQL/HLS requests)
-- [ ] Wire proxy chains into engine (allow chain selection per profile)
-- [ ] Wire account manager to SQLite repository (replace JSON file persistence)
-- [ ] Wire scheduler auto-start on main.go boot (start monitoring enabled rules)
-- [ ] Wire metrics persister StartSession/EndSession in engine start/stop
+- [x] Wire config migration into config.Load() (call MigrateIfNeeded before parse)
+- [x] Wire behavior profiles into viewer (use profile timings instead of hardcoded)
+- [x] Wire circuit breaker into viewer HTTP calls (wrap GQL/HLS requests)
+- [x] Wire proxy chains into engine (allow chain selection per profile)
+- [x] Wire account manager to SQLite repository (replace JSON file persistence)
+- [x] Wire scheduler auto-start on main.go boot (start monitoring enabled rules)
+- [x] Wire metrics persister StartSession/EndSession in engine start/stop
 
 ## Priority: High (Functional Gaps)
 
-- [ ] Token validate handler: pass real platform + proxy reference (currently nil)
-- [ ] Proxy geo enrichment handler: implement actual async call to GeoEnricher
-- [ ] Onboarding wizard: wire IPC calls for proxy.import, token.import, profile.create
-- [ ] Webhook config persistence: save/load webhooks to JSON or SQLite
-- [ ] ChannelSearch: pass a valid token for GQL search to work
-- [ ] Session export download: test in Tauri webview (blob URL compatibility)
-- [ ] MultiChannelCards: add UI to start multiple channels from dashboard
+- [x] Token validate handler: pass real platform + proxy reference (currently nil)
+- [x] Proxy geo enrichment handler: implement actual async call to GeoEnricher
+- [x] Onboarding wizard: wire IPC calls for proxy.import, token.import, profile.create
+- [x] Webhook config persistence: save/load webhooks to JSON or SQLite
+- [x] ChannelSearch: pass a valid token for GQL search to work
+- [x] Session export download: test in Tauri webview (blob URL compatibility)
+- [x] MultiChannelCards: add UI to start multiple channels from dashboard
 
 ## Priority: Medium (Improvements)
 
@@ -29,12 +28,12 @@ These modules exist but are not connected to the main flow.
 - [ ] Add E2E tests with Playwright for critical frontend flows
 - [ ] Implement YouTube full viewer (DASH/HLS with signed URLs)
 - [ ] Implement Kick Pusher WebSocket chat client
-- [ ] Light theme: audit all components for hardcoded dark colors
-- [ ] Add Grafana dashboard JSON template for MongeBot metrics
-- [ ] Add Alertmanager rules (viewer drop, proxy pool depleted, token exhaustion)
-- [ ] Token auto-refresh: detect expiring tokens and re-validate periodically
-- [ ] Add proxy import from URL (paste URL, fetch list, auto-import)
-- [ ] Add session detail expand in SessionHistory with MetricsChart
+- [x] Light theme: audit all components for hardcoded dark colors
+- [x] Add Grafana dashboard JSON template for MongeBot metrics
+- [x] Add Alertmanager rules (viewer drop, proxy pool depleted, token exhaustion)
+- [x] Token auto-refresh: detect expiring tokens and re-validate periodically
+- [x] Add proxy import from URL (paste URL, fetch list, auto-import)
+- [x] Add session detail expand in SessionHistory with MetricsChart
 
 ## Priority: Low (Nice to Have)
 

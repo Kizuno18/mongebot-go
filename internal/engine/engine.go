@@ -54,6 +54,9 @@ type Engine struct {
 	cancel     context.CancelFunc
 	channel    string
 
+	// Per-profile proxy chain (optional)
+	proxyChain []string
+
 	// Rate limit tracking
 	rateLimiter *RateLimitTracker
 
@@ -209,6 +212,20 @@ func (e *Engine) OnMetrics(fn func(*AggregatedMetrics)) {
 	e.onMetrics = fn
 }
 
+// SetProxyChain sets the proxy chain for the engine.
+func (e *Engine) SetProxyChain(chain []string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.proxyChain = chain
+}
+
+// GetProxyChain returns the current proxy chain.
+func (e *Engine) GetProxyChain() []string {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.proxyChain
+}
+
 // spawnWorker creates and starts a new viewer worker.
 func (e *Engine) spawnWorker(ctx context.Context, index int) error {
 	// Acquire proxy and token
@@ -222,12 +239,28 @@ func (e *Engine) spawnWorker(ctx context.Context, index int) error {
 	}
 	token := e.tokens[index%len(e.tokens)]
 
+	// Get behavior profile timings
+	profile := GetProfile(e.cfg.BehaviorProfile)
+
+	// Get proxy chain if set
+	e.mu.RLock()
+	proxyChain := e.proxyChain
+	e.mu.RUnlock()
+
 	viewerCfg := &platform.ViewerConfig{
-		Channel:   e.channel,
-		Token:     token,
-		Proxy:     p.URL(),
-		UserAgent: e.uaPool.Random(),
-		DeviceID:  fingerprint.GenerateDeviceID(),
+		Channel:             e.channel,
+		Token:               token,
+		Proxy:               p.URL(),
+		ProxyChain:          proxyChain,
+		UserAgent:           e.uaPool.Random(),
+		DeviceID:            fingerprint.GenerateDeviceID(),
+		BehaviorProfileName: e.cfg.BehaviorProfile,
+		HeartbeatInterval:   platform.MinMax{Min: profile.HeartbeatInterval.Min, Max: profile.HeartbeatInterval.Max},
+		SegmentFetchDelay:   platform.MinMax{Min: profile.SegmentFetchDelay.Min, Max: profile.SegmentFetchDelay.Max},
+		GQLPulseInterval:    platform.MinMax{Min: profile.GQLPulseInterval.Min, Max: profile.GQLPulseInterval.Max},
+		LivenessCheckDelay:  platform.MinMax{Min: profile.LivenessCheckDelay.Min, Max: profile.LivenessCheckDelay.Max},
+		MaxSessionDuration:  platform.MinMax{Min: profile.MaxSessionDuration.Min, Max: profile.MaxSessionDuration.Max},
+		ReconnectDelay:      platform.MinMax{Min: profile.ReconnectDelay.Min, Max: profile.ReconnectDelay.Max},
 	}
 
 	// Wrap viewer with auto-reconnection

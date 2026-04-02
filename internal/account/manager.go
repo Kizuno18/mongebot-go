@@ -1,13 +1,15 @@
-// Package account - profile CRUD operations with JSON persistence.
+// Package account - profile CRUD operations with JSON or SQLite persistence.
 package account
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 // Manager handles CRUD operations for profiles.
@@ -16,6 +18,7 @@ type Manager struct {
 	profiles []*Profile
 	filePath string
 	logger   *slog.Logger
+	repo     Repository // Optional SQLite repository
 }
 
 // NewManager creates a profile manager that persists to the given file.
@@ -33,6 +36,33 @@ func NewManager(filePath string, logger *slog.Logger) (*Manager, error) {
 	return m, nil
 }
 
+// NewManagerWithRepo creates a profile manager with SQLite repository.
+func NewManagerWithRepo(repo Repository, logger *slog.Logger) (*Manager, error) {
+	m := &Manager{
+		profiles: make([]*Profile, 0),
+		logger:   logger.With("component", "account-manager"),
+		repo:     repo,
+	}
+
+	// Load profiles from repository
+	ctx := context.Background()
+	profiles, err := repo.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("loading profiles from repository: %w", err)
+	}
+	m.profiles = profiles
+
+	m.logger.Info("account manager initialized with SQLite repository", "profiles", len(profiles))
+	return m, nil
+}
+
+// SetRepository sets the repository for persistence.
+func (m *Manager) SetRepository(repo Repository) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.repo = repo
+}
+
 // Create adds a new profile.
 func (m *Manager) Create(name, platform, channel string) (*Profile, error) {
 	m.mu.Lock()
@@ -48,7 +78,8 @@ func (m *Manager) Create(name, platform, channel string) (*Profile, error) {
 	profile := NewProfile(name, platform, channel)
 	m.profiles = append(m.profiles, profile)
 
-	if err := m.save(); err != nil {
+	if err := m.saveProfile(profile); err != nil {
+		m.profiles = m.profiles[:len(m.profiles)-1] // Rollback
 		return nil, err
 	}
 
@@ -76,8 +107,8 @@ func (m *Manager) Update(id string, fn func(*Profile)) error {
 	for _, p := range m.profiles {
 		if p.ID == id {
 			fn(p)
-			p.UpdatedAt = p.UpdatedAt // will be set by caller
-			return m.save()
+			p.UpdatedAt = time.Now()
+			return m.saveProfile(p)
 		}
 	}
 	return fmt.Errorf("profile %q not found", id)
@@ -102,6 +133,14 @@ func (m *Manager) Delete(id string) error {
 		return fmt.Errorf("profile %q not found", id)
 	}
 
+	// Delete from repository if available
+	if m.repo != nil {
+		ctx := context.Background()
+		if err := m.repo.Delete(ctx, id); err != nil {
+			return err
+		}
+	}
+
 	m.profiles = filtered
 	m.logger.Info("profile deleted", "id", id)
 	return m.save()
@@ -124,6 +163,12 @@ func (m *Manager) SetActive(id string) error {
 
 	if !found {
 		return fmt.Errorf("profile %q not found", id)
+	}
+
+	// Update in repository if available
+	if m.repo != nil {
+		ctx := context.Background()
+		return m.repo.SetActive(ctx, id)
 	}
 
 	return m.save()
@@ -221,8 +266,31 @@ func (m *Manager) load() error {
 	return json.Unmarshal(data, &m.profiles)
 }
 
-// save writes profiles to the JSON file.
+// saveProfile saves a single profile to the repository or JSON file.
+func (m *Manager) saveProfile(p *Profile) error {
+	if m.repo != nil {
+		ctx := context.Background()
+		// Check if profile exists
+		existing, _ := m.repo.GetByID(ctx, p.ID)
+		if existing != nil {
+			return m.repo.Update(ctx, p)
+		}
+		return m.repo.Create(ctx, p)
+	}
+	return m.save()
+}
+
+// save writes profiles to the JSON file (only if not using repository).
 func (m *Manager) save() error {
+	// Skip JSON file persistence when using repository
+	if m.repo != nil {
+		return nil
+	}
+
+	if m.filePath == "" {
+		return nil
+	}
+
 	dir := filepath.Dir(m.filePath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err

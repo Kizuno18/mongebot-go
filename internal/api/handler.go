@@ -5,6 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
 
 	"github.com/Kizuno18/mongebot-go/internal/proxy"
 )
@@ -22,9 +26,10 @@ func (s *Server) getHandler(method string) (handlerFunc, bool) {
 		"engine.setWorkers": s.handleEngineSetWorkers,
 
 		// Proxy methods
-		"proxy.list":    s.handleProxyList,
-		"proxy.import":  s.handleProxyImport,
-		"proxy.check":   s.handleProxyCheck,
+		"proxy.list":        s.handleProxyList,
+		"proxy.import":      s.handleProxyImport,
+		"proxy.importUrl":   s.handleProxyImportUrl,
+		"proxy.check":       s.handleProxyCheck,
 
 		// Config methods
 		"config.get": s.handleConfigGet,
@@ -140,6 +145,83 @@ func (s *Server) handleProxyImport(_ context.Context, params json.RawMessage) (a
 
 	added, errors := s.proxyMgr.AddBulk(p.Proxies)
 	return map[string]any{
+		"added":  added,
+		"errors": errors,
+	}, nil
+}
+
+type proxyImportUrlParams struct {
+	URL     string `json:"url"`
+	Timeout int    `json:"timeout,omitempty"` // seconds
+}
+
+func (s *Server) handleProxyImportUrl(ctx context.Context, params json.RawMessage) (any, error) {
+	var p proxyImportUrlParams
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, fmt.Errorf("invalid params: %w", err)
+	}
+
+	if p.URL == "" {
+		return nil, fmt.Errorf("url is required")
+	}
+
+	timeout := 30 * time.Second
+	if p.Timeout > 0 {
+		timeout = time.Duration(p.Timeout) * time.Second
+	}
+
+	// Fetch proxy list from URL
+	client := &http.Client{Timeout: timeout}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.URL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetching URL: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	// Parse proxy list - supports various formats:
+	// - One proxy per line (ip:port or protocol://ip:port)
+	// - JSON array of strings
+	var proxies []string
+
+	// Try JSON array first
+	if err := json.Unmarshal(body, &proxies); err == nil {
+		// Successfully parsed as JSON array
+	} else {
+		// Parse as text, one per line
+		lines := strings.Split(string(body), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			// Skip empty lines and comments
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			proxies = append(proxies, line)
+		}
+	}
+
+	if len(proxies) == 0 {
+		return nil, fmt.Errorf("no proxies found in response")
+	}
+
+	added, errors := s.proxyMgr.AddBulk(proxies)
+	s.logger.Info("imported proxies from URL", "url", p.URL, "found", len(proxies), "added", added)
+
+	return map[string]any{
+		"found":  len(proxies),
 		"added":  added,
 		"errors": errors,
 	}, nil

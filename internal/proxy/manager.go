@@ -15,20 +15,66 @@ import (
 
 // Manager manages a pool of proxies with rotation and health tracking.
 type Manager struct {
-	mu       sync.RWMutex
-	proxies  []*Proxy
-	inUse    map[string]bool // tracks proxies currently assigned to workers
-	strategy RotationStrategy
-	rrIndex  atomic.Int64 // round-robin counter
+	mu           sync.RWMutex
+	proxies      []*Proxy
+	inUse        map[string]bool // tracks proxies currently assigned to workers
+	strategy     RotationStrategy
+	rrIndex      atomic.Int64 // round-robin counter
+	chainManager *ChainManager // optional proxy chain manager
 }
 
 // NewManager creates a new proxy manager with the given rotation strategy.
 func NewManager(strategy RotationStrategy) *Manager {
 	return &Manager{
-		proxies:  make([]*Proxy, 0),
-		inUse:    make(map[string]bool),
-		strategy: strategy,
+		proxies:      make([]*Proxy, 0),
+		inUse:        make(map[string]bool),
+		strategy:     strategy,
+		chainManager: NewChainManager(),
 	}
+}
+
+// SetChainManager sets a custom chain manager.
+func (m *Manager) SetChainManager(cm *ChainManager) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.chainManager = cm
+}
+
+// GetChainManager returns the chain manager.
+func (m *Manager) GetChainManager() *ChainManager {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.chainManager
+}
+
+// AddChain adds a proxy chain to the manager.
+func (m *Manager) AddChain(name string, proxyURLs []string) error {
+	chain, err := BuildChain(name, proxyURLs...)
+	if err != nil {
+		return err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.chainManager.Add(chain)
+	return nil
+}
+
+// GetChain returns a proxy chain by name.
+func (m *Manager) GetChain(name string) *Chain {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.chainManager.Get(name)
+}
+
+// AcquireChain gets the entry proxy from a named chain.
+func (m *Manager) AcquireChain(name string) *Chain {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	chain := m.chainManager.Get(name)
+	if chain == nil {
+		return nil
+	}
+	return chain
 }
 
 // LoadFromFile reads proxies from a text file (one per line).

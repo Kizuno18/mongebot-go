@@ -7,6 +7,8 @@ import {
   Wifi,
   WifiOff,
   AlertTriangle,
+  Link,
+  Loader2,
 } from "lucide-react";
 import { ipc } from "../services/ipc";
 import type { ProxyInfo, ProxyListResponse } from "../types";
@@ -23,6 +25,8 @@ export default function ProxyManager() {
   const [stats, setStats] = useState({ total: 0, available: 0, inUse: 0 });
   const [importText, setImportText] = useState("");
   const [showImport, setShowImport] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [importingUrl, setImportingUrl] = useState(false);
 
   const loadProxies = useCallback(async () => {
     try {
@@ -56,6 +60,25 @@ export default function ProxyManager() {
     }
   };
 
+  const handleImportUrl = async () => {
+    if (!importUrl.trim()) return;
+
+    setImportingUrl(true);
+    try {
+      const result = await ipc.call<{ found: number; added: number; errors: string[] }>(
+        "proxy.importUrl",
+        { url: importUrl.trim() },
+      );
+      setImportUrl("");
+      setShowImport(false);
+      loadProxies();
+      alert(`Found ${result.found} proxies, added ${result.added}. ${result.errors?.length || 0} errors.`);
+    } catch (err) {
+      alert(`URL import failed: ${err}`);
+    } finally {
+      setImportingUrl(false);
+    }
+  };
 
   const handleCheckAll = async () => {
     try {
@@ -111,26 +134,62 @@ export default function ProxyManager() {
 
       {/* Import Panel */}
       {showImport && (
-        <div className="card space-y-3">
-          <h3 className="text-sm font-semibold text-gray-300">
-            Import Proxies
-          </h3>
-          <p className="text-xs text-gray-500">
-            Supported formats: ip:port, ip:port:user:pass, socks5://user:pass@ip:port
-          </p>
-          <textarea
-            className="input-field h-32 font-mono text-sm resize-none"
-            placeholder="Paste proxies here, one per line..."
-            value={importText}
-            onChange={(e) => setImportText(e.target.value)}
-          />
-          <div className="flex justify-end gap-2">
-            <button className="btn-ghost" onClick={() => setShowImport(false)}>
-              Cancel
-            </button>
-            <button className="btn-primary" onClick={handleImport}>
-              Import ({importText.split("\n").filter((l) => l.trim()).length})
-            </button>
+        <div className="card space-y-4">
+          {/* URL Import */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+              <Link size={14} />
+              Import from URL
+            </h3>
+            <p className="text-xs text-gray-500">
+              Fetch a proxy list from a URL (supports JSON arrays or one proxy per line)
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                className="input-field flex-1 text-sm"
+                placeholder="https://example.com/proxies.txt"
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !importingUrl && handleImportUrl()}
+              />
+              <button
+                className="btn-primary flex items-center gap-2"
+                onClick={handleImportUrl}
+                disabled={importingUrl || !importUrl.trim()}
+              >
+                {importingUrl ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Link size={16} />
+                )}
+                Fetch
+              </button>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-4 space-y-2">
+            <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+              <Upload size={14} />
+              Paste Proxies
+            </h3>
+            <p className="text-xs text-gray-500">
+              Supported formats: ip:port, ip:port:user:pass, socks5://user:pass@ip:port
+            </p>
+            <textarea
+              className="input-field h-32 font-mono text-sm resize-none"
+              placeholder="Paste proxies here, one per line..."
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <button className="btn-ghost" onClick={() => setShowImport(false)}>
+                Cancel
+              </button>
+              <button className="btn-primary" onClick={handleImport}>
+                Import ({importText.split("\n").filter((l) => l.trim()).length})
+              </button>
+            </div>
           </div>
         </div>
       )}
