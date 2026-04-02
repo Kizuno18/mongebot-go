@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for MongeBot",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-spawn",
+    "shell:allow-execute",
+    "fs:default",
+    "fs:allow-download",
+    "fs:allow-download-dir",
+    "dialog:default",
+    "dialog:allow-save"
+  ]
+}

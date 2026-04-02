@@ -15,11 +15,32 @@ type AppConfig struct {
 	mu       sync.RWMutex
 	filePath string
 
-	Version  int           `json:"version"`
-	Engine   EngineConfig  `json:"engine"`
-	API      APIConfig     `json:"api"`
-	Logging  LogConfig     `json:"logging"`
-	Profiles []ProfileConfig `json:"profiles"`
+	Version   int             `json:"version"`
+	Engine    EngineConfig    `json:"engine"`
+	API       APIConfig       `json:"api"`
+	Logging   LogConfig       `json:"logging"`
+	Profiles  []ProfileConfig `json:"profiles"`
+	Scheduler SchedulerConfig `json:"scheduler"`
+}
+
+// SchedulerConfig holds scheduler-related configuration.
+type SchedulerConfig struct {
+	Enabled bool            `json:"enabled"`
+	Rules   []SchedulerRule `json:"rules"`
+}
+
+// SchedulerRule represents a scheduling rule for auto-start/stop.
+type SchedulerRule struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Channel     string `json:"channel"`
+	Platform    string `json:"platform"`
+	Trigger     string `json:"trigger"`     // "stream_live", "scheduled", "manual"
+	Workers     int    `json:"workers"`
+	MaxDuration string `json:"maxDuration"` // e.g., "2h"
+	Enabled     bool   `json:"enabled"`
+	StartTime   string `json:"startTime,omitempty"` // "14:00"
+	StopTime    string `json:"stopTime,omitempty"`  // "22:00"
 }
 
 // EngineConfig controls the viewer engine behavior.
@@ -79,6 +100,10 @@ type ProfileConfig struct {
 	// Per-profile engine overrides (nil = use global)
 	MaxWorkers *int          `json:"maxWorkers,omitempty"`
 	Features   *FeatureFlags `json:"features,omitempty"`
+
+	// Per-profile proxy settings
+	ProxyChain []string `json:"proxyChain,omitempty"` // Ordered list of proxy URLs for chain routing
+	ProxyTag   string   `json:"proxyTag,omitempty"`   // Tag to select proxy from pool
 }
 
 // Duration wraps time.Duration for JSON serialization as string.
@@ -183,4 +208,11 @@ func (c *AppConfig) GetActiveProfile() *ProfileConfig {
 		}
 	}
 	return nil
+}
+
+// GetSchedulerConfig returns the scheduler configuration.
+func (c *AppConfig) GetSchedulerConfig() SchedulerConfig {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.Scheduler
 }

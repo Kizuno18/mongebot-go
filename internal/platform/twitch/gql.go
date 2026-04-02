@@ -17,6 +17,12 @@ type gqlClient struct {
 	token     string
 	userAgent string
 	deviceID  string
+	cb        CircuitBreakerExecutor // Optional circuit breaker
+}
+
+// CircuitBreakerExecutor is the interface for circuit breaker execution.
+type CircuitBreakerExecutor interface {
+	Execute(fn func() error) error
 }
 
 // newGQLClient creates a GQL client.
@@ -27,6 +33,11 @@ func newGQLClient(client *http.Client, token, userAgent, deviceID string) *gqlCl
 		userAgent: userAgent,
 		deviceID:  deviceID,
 	}
+}
+
+// setCircuitBreaker sets the circuit breaker for GQL requests.
+func (g *gqlClient) setCircuitBreaker(cb CircuitBreakerExecutor) {
+	g.cb = cb
 }
 
 // getStreamToken fetches the stream playback access token and signature.
@@ -170,18 +181,38 @@ func (g *gqlClient) doRequest(ctx context.Context, payload any) ([]byte, int, er
 
 	setGQLHeaders(req, g.token, g.userAgent, g.deviceID)
 
-	resp, err := g.client.Do(req)
-	if err != nil {
-		return nil, 0, fmt.Errorf("executing GQL request: %w", err)
-	}
-	defer resp.Body.Close()
+	var resp *http.Response
+	var body []byte
+	var statusCode int
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("reading GQL response: %w", err)
+	doReq := func() error {
+		var reqErr error
+		resp, reqErr = g.client.Do(req)
+		if reqErr != nil {
+			return reqErr
+		}
+		defer resp.Body.Close()
+
+		body, reqErr = io.ReadAll(resp.Body)
+		if reqErr != nil {
+			return fmt.Errorf("reading GQL response: %w", reqErr)
+		}
+		statusCode = resp.StatusCode
+		return nil
 	}
 
-	return body, resp.StatusCode, nil
+	// Use circuit breaker if available
+	if g.cb != nil {
+		if err := g.cb.Execute(doReq); err != nil {
+			return nil, 0, err
+		}
+	} else {
+		if err := doReq(); err != nil {
+			return nil, 0, err
+		}
+	}
+
+	return body, statusCode, nil
 }
 
 // setGQLHeaders sets the standard Twitch GQL request headers.

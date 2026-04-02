@@ -122,10 +122,20 @@ func main() {
 	tTotal, tValid, _, _, _ := tokenMgr.Stats()
 	logger.Info("tokens loaded", "total", tTotal, "valid", tValid)
 
-	// Account manager
-	accountMgr, err := account.NewManager("data/profiles.json", logger)
-	if err != nil {
-		logger.Warn("account manager initialization failed", "error", err)
+	// Account manager - try SQLite first, fallback to JSON
+	var accountMgr *account.Manager
+	if db != nil {
+		repo := account.NewSQLiteRepo(db)
+		accountMgr, err = account.NewManagerWithRepo(repo, logger)
+		if err != nil {
+			logger.Warn("account manager with SQLite failed, trying JSON", "error", err)
+		}
+	}
+	if accountMgr == nil {
+		accountMgr, err = account.NewManager("data/profiles.json", logger)
+		if err != nil {
+			logger.Warn("account manager initialization failed", "error", err)
+		}
 	}
 
 	// Stream manager (FFmpeg)
@@ -154,8 +164,24 @@ func main() {
 	// Create multi-channel engine
 	multiEng := engine.NewMultiEngine(activePlatform, proxyMgr, tokenMgr.GetValidValues(), uaPool, cfg.GetEngine(), logger)
 
-	// Create scheduler and auto-start enabled rules
+	// Create scheduler and load enabled rules from config
 	scheduler := engine.NewScheduler(multiEng, activePlatform, logger)
+	schedCfg := cfg.GetSchedulerConfig()
+	if schedCfg.Enabled {
+		for _, rule := range schedCfg.Rules {
+			if rule.Enabled {
+				scheduler.AddRule(engine.ScheduleRule{
+					ID:       rule.ID,
+					Name:     rule.Name,
+					Channel:  rule.Channel,
+					Platform: rule.Platform,
+					Trigger:  engine.TriggerType(rule.Trigger),
+					Workers:  rule.Workers,
+					Enabled:  rule.Enabled,
+				})
+			}
+		}
+	}
 	scheduler.Start(ctx)
 
 	// Setup stream monitor with event broadcasting
@@ -170,6 +196,10 @@ func main() {
 
 	// Setup webhook manager for Discord/Telegram/HTTP notifications
 	webhookMgr := engine.NewWebhookManager(logger)
+	webhookMgr.SetFilePath("data/webhooks.json")
+	if err := webhookMgr.Load(); err != nil {
+		logger.Warn("failed to load webhooks", "error", err)
+	}
 	api.SetWebhookManager(webhookMgr)
 
 	// Wire stream monitor to send webhook notifications
@@ -187,8 +217,9 @@ func main() {
 	})
 
 	// Setup metrics persistence (saves snapshots to SQLite every 30s)
+	var persister *engine.MetricsPersister
 	if db != nil {
-		persister := engine.NewMetricsPersister(db, eng, logger, 30*time.Second)
+		persister = engine.NewMetricsPersister(db, eng, logger, 30*time.Second)
 		// Auto-start session tracking for the default profile
 		if profile := cfg.GetActiveProfile(); profile != nil {
 			persister.StartSession(ctx, profile.ID, profile.Channel, profile.Platform)
@@ -215,14 +246,14 @@ func main() {
 
 	switch *mode {
 	case "headless":
-		runHeadless(ctx, eng, cfg, logger, *channel, *workers, sigCh, cancel)
+		runHeadless(ctx, eng, persister, cfg, logger, *channel, *workers, sigCh, cancel)
 	default:
-		runSidecar(ctx, eng, proxyMgr, cfg, logRing, logger, sigCh, cancel)
+		runSidecar(ctx, eng, persister, proxyMgr, cfg, logRing, logger, sigCh, cancel)
 	}
 }
 
 // runSidecar starts the API server for Tauri frontend communication.
-func runSidecar(ctx context.Context, eng *engine.Engine, proxyMgr *proxy.Manager, cfg *config.AppConfig, logRing *logpkg.RingBuffer, logger *slog.Logger, sigCh chan os.Signal, cancel context.CancelFunc) {
+func runSidecar(ctx context.Context, eng *engine.Engine, persister *engine.MetricsPersister, proxyMgr *proxy.Manager, cfg *config.AppConfig, logRing *logpkg.RingBuffer, logger *slog.Logger, sigCh chan os.Signal, cancel context.CancelFunc) {
 	srv := api.NewServer(cfg.API, eng, proxyMgr, cfg, logRing, logger)
 
 	go func() {
@@ -243,11 +274,15 @@ func runSidecar(ctx context.Context, eng *engine.Engine, proxyMgr *proxy.Manager
 	}
 
 	eng.Stop()
+	// End metrics session on shutdown
+	if persister != nil {
+		persister.EndSession(ctx, "shutdown")
+	}
 	logger.Info("shutdown complete")
 }
 
 // runHeadless starts the engine directly without UI.
-func runHeadless(ctx context.Context, eng *engine.Engine, cfg *config.AppConfig, logger *slog.Logger, channel string, workers int, sigCh chan os.Signal, cancel context.CancelFunc) {
+func runHeadless(ctx context.Context, eng *engine.Engine, persister *engine.MetricsPersister, cfg *config.AppConfig, logger *slog.Logger, channel string, workers int, sigCh chan os.Signal, cancel context.CancelFunc) {
 	if channel == "" {
 		if p := cfg.GetActiveProfile(); p != nil {
 			channel = p.Channel
@@ -275,6 +310,10 @@ func runHeadless(ctx context.Context, eng *engine.Engine, cfg *config.AppConfig,
 	}
 
 	eng.Stop()
+	// End metrics session on shutdown
+	if persister != nil {
+		persister.EndSession(ctx, "shutdown")
+	}
 	cancel()
 	logger.Info("shutdown complete")
 }

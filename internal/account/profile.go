@@ -2,10 +2,23 @@
 package account
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"time"
 )
+
+// Repository defines the interface for profile persistence.
+type Repository interface {
+	Create(ctx context.Context, p *Profile) error
+	GetByID(ctx context.Context, id string) (*Profile, error)
+	GetActive(ctx context.Context) (*Profile, error)
+	List(ctx context.Context) ([]*Profile, error)
+	Update(ctx context.Context, p *Profile) error
+	Delete(ctx context.Context, id string) error
+	SetActive(ctx context.Context, id string) error
+	ExistsByChannel(ctx context.Context, platform, channel string) (bool, error)
+}
 
 // Profile represents a saved bot configuration for a specific channel.
 type Profile struct {
@@ -22,9 +35,10 @@ type Profile struct {
 	Features   *FeatureOverride `json:"features,omitempty"`
 
 	// Associated resources
-	TokenIDs []string `json:"tokenIds,omitempty"`
-	ProxyTag string   `json:"proxyTag,omitempty"` // Filter proxies by tag/group
-	Notes    string   `json:"notes,omitempty"`
+	TokenIDs   []string `json:"tokenIds,omitempty"`
+	ProxyTag   string   `json:"proxyTag,omitempty"` // Filter proxies by tag/group
+	ProxyChain []string `json:"proxyChain,omitempty"` // Proxy chain for this profile
+	Notes      string   `json:"notes,omitempty"`
 }
 
 // FeatureOverride allows per-profile feature flag overrides.

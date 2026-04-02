@@ -20,6 +20,7 @@ import (
 
 	"github.com/Kizuno18/mongebot-go/internal/platform"
 	"github.com/Kizuno18/mongebot-go/pkg/fingerprint"
+	"github.com/Kizuno18/mongebot-go/pkg/netutil"
 )
 
 // Viewer simulates a single Twitch viewer connection.
@@ -40,6 +41,10 @@ type Viewer struct {
 	weaverURL   string
 	spadeURL    string
 
+	// Circuit breakers for graceful degradation
+	gqlCB  *netutil.CircuitBreaker
+	hlsCB  *netutil.CircuitBreaker
+
 	// Metrics (atomic for lock-free reads)
 	segmentsFetched atomic.Int64
 	bytesReceived   atomic.Int64
@@ -54,6 +59,17 @@ func NewViewer(cfg *platform.ViewerConfig, logger *slog.Logger) *Viewer {
 	v := &Viewer{
 		config: cfg,
 		logger: logger.With("viewer", cfg.DeviceID[:8], "channel", cfg.Channel),
+		// Initialize circuit breakers for GQL and HLS requests
+		gqlCB: netutil.NewCircuitBreaker(netutil.CircuitBreakerConfig{
+			Name:         "gql",
+			Threshold:    5,
+			ResetTimeout: 30 * time.Second,
+		}),
+		hlsCB: netutil.NewCircuitBreaker(netutil.CircuitBreakerConfig{
+			Name:         "hls",
+			Threshold:    10,
+			ResetTimeout: 60 * time.Second,
+		}),
 	}
 	v.status.Store(int32(platform.ViewerIdle))
 	v.lastActivity.Store(time.Now())
@@ -108,6 +124,7 @@ func (v *Viewer) Start(ctx context.Context) error {
 	// Setup HTTP client with proxy
 	v.client = v.createHTTPClient()
 	v.gql = newGQLClient(v.client, v.config.Token, v.config.UserAgent, v.config.DeviceID)
+	v.gql.setCircuitBreaker(v.gqlCB) // Wire circuit breaker for GQL requests
 
 	v.logger.Info("starting viewer connection")
 
@@ -291,9 +308,11 @@ func (v *Viewer) setupHLS(ctx context.Context) error {
 	return nil
 }
 
-// heartbeatLoop sends minute-watched Spade events every 60 seconds.
+// heartbeatLoop sends minute-watched Spade events based on behavior profile timing.
 func (v *Viewer) heartbeatLoop(ctx context.Context) error {
-	ticker := time.NewTicker(60 * time.Second)
+	// Use profile timing or fallback to default 60s
+	interval := v.randomDuration(v.config.HeartbeatInterval, 55*time.Second, 65*time.Second)
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
@@ -307,6 +326,8 @@ func (v *Viewer) heartbeatLoop(ctx context.Context) error {
 				v.heartbeatsSent.Add(1)
 				v.lastActivity.Store(time.Now())
 			}
+			// Randomize next interval
+			ticker.Reset(v.randomDuration(v.config.HeartbeatInterval, 55*time.Second, 65*time.Second))
 		}
 	}
 }
@@ -336,7 +357,8 @@ func (v *Viewer) segmentFetcherLoop(ctx context.Context) error {
 		}
 		req.Header.Set("User-Agent", v.config.UserAgent)
 
-		resp, err := v.client.Do(req)
+		// Use HLS circuit breaker for playlist fetch
+		resp, err := v.doHLS(req)
 		if err != nil {
 			time.Sleep(10 * time.Second)
 			continue
@@ -355,8 +377,8 @@ func (v *Viewer) segmentFetcherLoop(ctx context.Context) error {
 			resp.Body.Close()
 		}
 
-		// Random delay between 4-8 seconds (simulating real HLS chunk duration)
-		delay := 4*time.Second + time.Duration(rand.Int64N(int64(4*time.Second)))
+		// Use profile timing or fallback to default 4-8 seconds
+		delay := v.randomDuration(v.config.SegmentFetchDelay, 4*time.Second, 8*time.Second)
 		select {
 		case <-ctx.Done():
 			return nil
@@ -365,7 +387,7 @@ func (v *Viewer) segmentFetcherLoop(ctx context.Context) error {
 	}
 }
 
-// fetchSegment downloads a single HLS segment.
+// fetchSegment downloads a single HLS segment with circuit breaker protection.
 func (v *Viewer) fetchSegment(ctx context.Context, segmentURL string) {
 	req, err := http.NewRequestWithContext(ctx, "GET", segmentURL, nil)
 	if err != nil {
@@ -373,7 +395,8 @@ func (v *Viewer) fetchSegment(ctx context.Context, segmentURL string) {
 	}
 	req.Header.Set("User-Agent", v.config.UserAgent)
 
-	resp, err := v.client.Do(req)
+	// Use HLS circuit breaker for segment fetch
+	resp, err := v.doHLS(req)
 	if err != nil {
 		return
 	}
@@ -387,11 +410,11 @@ func (v *Viewer) fetchSegment(ctx context.Context, segmentURL string) {
 	}
 }
 
-// gqlPulseLoop sends periodic WatchTrackQuery GQL calls.
+// gqlPulseLoop sends periodic WatchTrackQuery GQL calls based on behavior profile.
 func (v *Viewer) gqlPulseLoop(ctx context.Context) error {
 	for {
-		// Random delay between 3-7 minutes
-		delay := 3*time.Minute + time.Duration(rand.Int64N(int64(4*time.Minute)))
+		// Use profile timing or fallback to default 3-7 minutes
+		delay := v.randomDuration(v.config.GQLPulseInterval, 3*time.Minute, 7*time.Minute)
 		select {
 		case <-ctx.Done():
 			return nil
@@ -406,9 +429,11 @@ func (v *Viewer) gqlPulseLoop(ctx context.Context) error {
 	}
 }
 
-// livenessLoop checks if the stream is still live via HEAD requests.
+// livenessLoop checks if the stream is still live via HEAD requests based on behavior profile.
 func (v *Viewer) livenessLoop(ctx context.Context) error {
-	ticker := time.NewTicker(40 * time.Second)
+	// Use profile timing or fallback to default 30-60 seconds
+	interval := v.randomDuration(v.config.LivenessCheckDelay, 30*time.Second, 60*time.Second)
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
@@ -430,7 +455,8 @@ func (v *Viewer) livenessLoop(ctx context.Context) error {
 			}
 			req.Header.Set("User-Agent", v.config.UserAgent)
 
-			resp, err := v.client.Do(req)
+			// Use HLS circuit breaker for liveness check
+			resp, err := v.doHLS(req)
 			if err != nil {
 				continue
 			}
@@ -440,6 +466,13 @@ func (v *Viewer) livenessLoop(ctx context.Context) error {
 				v.logger.Info("stream appears offline (404)")
 				return fmt.Errorf("stream offline")
 			}
+
+			// Randomize next interval
+			ticker.Reset(v.randomDuration(v.config.LivenessCheckDelay, 30*time.Second, 60*time.Second))
+		}
+	}
+}
+			ticker.Reset(v.randomDuration(v.config.LivenessCheckDelay, 30*time.Second, 60*time.Second))
 		}
 	}
 }
@@ -510,7 +543,14 @@ func (v *Viewer) createHTTPClient() *http.Client {
 	// Use fingerprinted transport for anti-detection
 	transport := fingerprint.NewFingerprintedTransport()
 
-	if v.config.Proxy != "" {
+	// Support proxy chain: use first proxy in chain as entry point
+	if len(v.config.ProxyChain) > 0 {
+		// Use the first proxy in the chain as the entry point
+		if u, err := url.Parse(v.config.ProxyChain[0]); err == nil {
+			transport.Proxy = http.ProxyURL(u)
+			v.logger.Debug("using proxy chain", "entry", v.config.ProxyChain[0], "hops", len(v.config.ProxyChain))
+		}
+	} else if v.config.Proxy != "" {
 		if u, err := url.Parse(v.config.Proxy); err == nil {
 			transport.Proxy = http.ProxyURL(u)
 		}
@@ -667,6 +707,48 @@ func fetchSpadeURL(ctx context.Context, client *http.Client, channel, userAgent 
 	}
 
 	return settingsContent[spadeStart : spadeStart+spadeEnd], nil
+}
+
+// randomDuration returns a random duration within the config range, or falls back to defaults.
+func (v *Viewer) randomDuration(cfg platform.MinMax, defaultMin, defaultMax time.Duration) time.Duration {
+	min := cfg.Min
+	max := cfg.Max
+	if min == 0 && max == 0 {
+		min = defaultMin
+		max = defaultMax
+	}
+	if min >= max {
+		return min
+	}
+	return min + time.Duration(rand.Int64N(int64(max-min)))
+}
+
+// doGQL executes a GQL request with circuit breaker protection.
+func (v *Viewer) doGQL(req *http.Request) (*http.Response, error) {
+	var resp *http.Response
+	err := v.gqlCB.Execute(func() error {
+		var reqErr error
+		resp, reqErr = v.client.Do(req)
+		return reqErr
+	})
+	if err != nil {
+		v.logger.Debug("GQL circuit breaker open or request failed", "error", err)
+	}
+	return resp, err
+}
+
+// doHLS executes an HLS request with circuit breaker protection.
+func (v *Viewer) doHLS(req *http.Request) (*http.Response, error) {
+	var resp *http.Response
+	err := v.hlsCB.Execute(func() error {
+		var reqErr error
+		resp, reqErr = v.client.Do(req)
+		return reqErr
+	})
+	if err != nil {
+		v.logger.Debug("HLS circuit breaker open or request failed", "error", err)
+	}
+	return resp, err
 }
 
 // init ensures fingerprint package is used (will be expanded later).

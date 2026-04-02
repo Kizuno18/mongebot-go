@@ -5,11 +5,16 @@ package engine
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -40,9 +45,11 @@ type WebhookConfig struct {
 
 // WebhookManager handles sending notifications to configured webhooks.
 type WebhookManager struct {
+	mu       sync.RWMutex
 	webhooks []WebhookConfig
 	client   *http.Client
 	logger   *slog.Logger
+	filePath string // Path to webhooks.json for persistence
 }
 
 // NewWebhookManager creates a webhook manager.
@@ -54,13 +61,75 @@ func NewWebhookManager(logger *slog.Logger) *WebhookManager {
 	}
 }
 
+// SetFilePath sets the path for webhook persistence.
+func (wm *WebhookManager) SetFilePath(path string) {
+	wm.mu.Lock()
+	wm.filePath = path
+	wm.mu.Unlock()
+}
+
+// Load reads webhooks from the configured file.
+func (wm *WebhookManager) Load() error {
+	wm.mu.RLock()
+	path := wm.filePath
+	wm.mu.RUnlock()
+
+	if path == "" {
+		return nil
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // No file yet
+		}
+		return fmt.Errorf("reading webhooks: %w", err)
+	}
+
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
+	return json.Unmarshal(data, &wm.webhooks)
+}
+
+// Save writes webhooks to the configured file.
+func (wm *WebhookManager) Save() error {
+	wm.mu.RLock()
+	path := wm.filePath
+	webhooks := wm.webhooks
+	wm.mu.RUnlock()
+
+	if path == "" {
+		return nil
+	}
+
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(webhooks, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0o644)
+}
+
 // AddWebhook registers a new webhook endpoint.
 func (wm *WebhookManager) AddWebhook(cfg WebhookConfig) {
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
+	if cfg.ID == "" {
+		cfg.ID = generateWebhookID()
+	}
 	wm.webhooks = append(wm.webhooks, cfg)
+	wm.logger.Info("webhook added", "id", cfg.ID, "name", cfg.Name, "type", cfg.Type)
 }
 
 // RemoveWebhook removes a webhook by ID.
 func (wm *WebhookManager) RemoveWebhook(id string) {
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
 	filtered := make([]WebhookConfig, 0, len(wm.webhooks))
 	for _, w := range wm.webhooks {
 		if w.ID != id {
@@ -72,6 +141,8 @@ func (wm *WebhookManager) RemoveWebhook(id string) {
 
 // ListWebhooks returns all configured webhooks.
 func (wm *WebhookManager) ListWebhooks() []WebhookConfig {
+	wm.mu.RLock()
+	defer wm.mu.RUnlock()
 	result := make([]WebhookConfig, len(wm.webhooks))
 	copy(result, wm.webhooks)
 	return result
@@ -79,7 +150,12 @@ func (wm *WebhookManager) ListWebhooks() []WebhookConfig {
 
 // Notify sends a notification to all webhooks that match the event type.
 func (wm *WebhookManager) Notify(ctx context.Context, eventType string, title string, message string, fields map[string]string) {
-	for _, webhook := range wm.webhooks {
+	wm.mu.RLock()
+	webhooks := make([]WebhookConfig, len(wm.webhooks))
+	copy(webhooks, wm.webhooks)
+	wm.mu.RUnlock()
+
+	for _, webhook := range webhooks {
 		if !webhook.Enabled || !wm.matchesEvent(webhook, eventType) {
 			continue
 		}
@@ -212,4 +288,11 @@ func (wm *WebhookManager) matchesEvent(cfg WebhookConfig, eventType string) bool
 		}
 	}
 	return false
+}
+
+// generateWebhookID creates a unique ID for a webhook.
+func generateWebhookID() string {
+	b := make([]byte, 4)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }

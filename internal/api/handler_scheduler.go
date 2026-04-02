@@ -214,9 +214,18 @@ func handleChannelSearch(ctx context.Context, params json.RawMessage) (any, erro
 		p.Limit = 8
 	}
 
+	// Get a valid token for the search
+	var token string
+	if globalExtDeps.TokenMgr != nil {
+		tokens := globalExtDeps.TokenMgr.GetValidValues()
+		if len(tokens) > 0 {
+			token = tokens[0]
+		}
+	}
+
 	// Use a default HTTP client for search
 	client := &http.Client{Timeout: 15 * time.Second}
-	results, err := twitch.SearchChannels(ctx, client, p.Query, "", p.Limit)
+	results, err := twitch.SearchChannels(ctx, client, p.Query, token, p.Limit)
 	if err != nil {
 		return nil, fmt.Errorf("channel search failed: %w", err)
 	}

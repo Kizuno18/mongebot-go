@@ -48,12 +48,28 @@ type Viewer interface {
 
 // ViewerConfig holds all parameters needed to create a viewer.
 type ViewerConfig struct {
-	Channel   string
-	Token     string
-	Proxy     string
-	UserAgent string
-	DeviceID  string
-	Options   map[string]any
+	Channel             string
+	Token               string
+	Proxy               string
+	ProxyChain          []string        // Ordered list of proxy URLs for chain routing
+	UserAgent           string
+	DeviceID            string
+	BehaviorProfileName string            // Name of behavior profile (lurker, active, engaged, stealth, rotating)
+	Options             map[string]any
+
+	// Behavior timing ranges (populated from engine.BehaviorProfile)
+	HeartbeatInterval   MinMax `json:"heartbeatInterval,omitempty"`
+	SegmentFetchDelay   MinMax `json:"segmentFetchDelay,omitempty"`
+	GQLPulseInterval    MinMax `json:"gqlPulseInterval,omitempty"`
+	LivenessCheckDelay  MinMax `json:"livenessCheckDelay,omitempty"`
+	MaxSessionDuration  MinMax `json:"maxSessionDuration,omitempty"`
+	ReconnectDelay      MinMax `json:"reconnectDelay,omitempty"`
+}
+
+// MinMax represents a min/max range for randomized durations.
+type MinMax struct {
+	Min time.Duration `json:"min"`
+	Max time.Duration `json:"max"`
 }
 
 // StreamStatus represents the current state of a stream.

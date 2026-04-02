@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { History, Clock, Eye, HardDrive, Tv, TrendingUp, Download } from "lucide-react";
 import { ipc } from "../services/ipc";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 
 interface Session {
   id: number;
@@ -74,13 +76,13 @@ export default function SessionHistory() {
               onClick={async () => {
                 try {
                   const result = await ipc.call<{ data: string }>("sessions.export", { format: "csv", limit: 100 });
-                  const blob = new Blob([result.data], { type: "text/csv" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `mongebot-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
-                  a.click();
-                  URL.revokeObjectURL(url);
+                  const path = await save({
+                    defaultPath: `mongebot-sessions-${new Date().toISOString().slice(0, 10)}.csv`,
+                    filters: [{ name: "CSV", extensions: ["csv"] }],
+                  });
+                  if (path) {
+                    await writeTextFile(path, result.data);
+                  }
                 } catch { /* ignore */ }
               }}
             >
@@ -92,13 +94,13 @@ export default function SessionHistory() {
               onClick={async () => {
                 try {
                   const result = await ipc.call<{ data: string }>("sessions.export", { format: "json", limit: 100 });
-                  const blob = new Blob([result.data], { type: "application/json" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `mongebot-sessions-${new Date().toISOString().slice(0, 10)}.json`;
-                  a.click();
-                  URL.revokeObjectURL(url);
+                  const path = await save({
+                    defaultPath: `mongebot-sessions-${new Date().toISOString().slice(0, 10)}.json`,
+                    filters: [{ name: "JSON", extensions: ["json"] }],
+                  });
+                  if (path) {
+                    await writeTextFile(path, result.data);
+                  }
                 } catch { /* ignore */ }
               }}
             >
