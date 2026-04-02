@@ -28,12 +28,12 @@ These modules exist but are not connected to the main flow.
 - [ ] Add E2E tests with Playwright for critical frontend flows
 - [ ] Implement YouTube full viewer (DASH/HLS with signed URLs)
 - [ ] Implement Kick Pusher WebSocket chat client
-- [ ] Light theme: audit all components for hardcoded dark colors
-- [ ] Add Grafana dashboard JSON template for MongeBot metrics
-- [ ] Add Alertmanager rules (viewer drop, proxy pool depleted, token exhaustion)
-- [ ] Token auto-refresh: detect expiring tokens and re-validate periodically
-- [ ] Add proxy import from URL (paste URL, fetch list, auto-import)
-- [ ] Add session detail expand in SessionHistory with MetricsChart
+- [x] Light theme: audit all components for hardcoded dark colors
+- [x] Add Grafana dashboard JSON template for MongeBot metrics
+- [x] Add Alertmanager rules (viewer drop, proxy pool depleted, token exhaustion)
+- [x] Token auto-refresh: detect expiring tokens and re-validate periodically
+- [x] Add proxy import from URL (paste URL, fetch list, auto-import)
+- [x] Add session detail expand in SessionHistory with MetricsChart
 
 ## Priority: Low (Nice to Have)
 

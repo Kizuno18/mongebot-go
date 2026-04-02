@@ -1,0 +1,87 @@
+# Alertmanager configuration for MongeBot
+# Routes alerts to appropriate receivers based on severity and category.
+
+global:
+  # SMTP settings for email alerts (uncomment and configure)
+  # smtp_smarthost: 'smtp.example.com:587'
+  # smtp_from: 'alertmanager@example.com'
+  # smtp_auth_username: 'alertmanager@example.com'
+  # smtp_auth_password: 'your-password'
+
+  # Slack settings (uncomment and configure)
+  # slack_api_url: 'https://hooks.slack.com/services/XXX/YYY/ZZZ'
+
+route:
+  receiver: 'default-receiver'
+  group_by: ['severity', 'category']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Warning alerts - less urgent
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 5m
+      repeat_interval: 4h
+
+    # Info alerts - informational only
+    - match:
+        severity: info
+      receiver: 'info-alerts'
+      group_wait: 10m
+
+receivers:
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/alertmanager'
+        send_resolved: true
+
+  - name: 'critical-alerts'
+    # Email configuration (uncomment to enable)
+    # email_configs:
+    #   - to: 'admin@example.com'
+    #     send_resolved: true
+
+    # Slack configuration (uncomment to enable)
+    # slack_configs:
+    #   - channel: '#mongebot-critical'
+    #     title: '{{ .Status | toUpper }}: {{ .CommonAnnotations.summary }}'
+    #     text: '{{ .CommonAnnotations.description }}'
+    #     send_resolved: true
+
+    # Webhook for MongeBot integration
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/alertmanager'
+        send_resolved: true
+
+  - name: 'warning-alerts'
+    # Slack configuration (uncomment to enable)
+    # slack_configs:
+    #   - channel: '#mongebot-warnings'
+    #     send_resolved: true
+
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/alertmanager'
+        send_resolved: true
+
+  - name: 'info-alerts'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/alertmanager'
+        send_resolved: true
+
+inhibit_rules:
+  # If engine is down, inhibit viewer-related alerts
+  - source_match:
+      severity: critical
+      alertname: MongeBotEngineDown
+    target_match:
+      category: engine
+    equal: []

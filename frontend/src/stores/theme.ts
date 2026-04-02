@@ -54,10 +54,13 @@ export function savePrefs(prefs: UIPreferences): void {
 // applyTheme sets CSS variables and body class for the active theme.
 export function applyTheme(prefs: UIPreferences): void {
   const root = document.documentElement;
+  const body = document.body;
 
-  // Theme class
+  // Theme class on both root and body
   root.classList.remove("light", "dark");
+  body.classList.remove("light", "dark");
   root.classList.add(prefs.theme);
+  body.classList.add(prefs.theme);
 
   // Light theme overrides
   if (prefs.theme === "light") {
@@ -66,14 +69,16 @@ export function applyTheme(prefs: UIPreferences): void {
     root.style.setProperty("--text-primary", "17 24 39");
     root.style.setProperty("--text-secondary", "107 114 128");
     root.style.setProperty("--border-color", "229 231 235");
-    document.body.className = "bg-gray-50 text-gray-900 font-sans antialiased";
+    body.style.backgroundColor = "rgb(249 250 251)";
+    body.style.color = "rgb(17 24 39)";
   } else {
     root.style.removeProperty("--bg-primary");
     root.style.removeProperty("--bg-secondary");
     root.style.removeProperty("--text-primary");
     root.style.removeProperty("--text-secondary");
     root.style.removeProperty("--border-color");
-    document.body.className = "bg-gray-950 text-gray-100 font-sans antialiased";
+    body.style.backgroundColor = "rgb(3 7 18)";
+    body.style.color = "rgb(243 244 246)";
   }
 
   // Accent color

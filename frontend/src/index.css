@@ -6,6 +6,29 @@
     --color-accent: 16 185 129;
     --color-danger: 239 68 68;
     --color-warning: 245 158 11;
+
+    /* Dark theme (default) */
+    --bg-card: 17 24 39;
+    --bg-card-hover: 31 41 55;
+    --bg-input: 31 41 55;
+    --bg-secondary: 17 24 39;
+    --text-primary: 243 244 246;
+    --text-secondary: 156 163 175;
+    --text-muted: 107 114 128;
+    --border-color: 31 41 55;
+    --border-light: 55 65 81;
+  }
+
+  .light {
+    --bg-card: 255 255 255;
+    --bg-card-hover: 249 250 251;
+    --bg-input: 249 250 251;
+    --bg-secondary: 243 244 246;
+    --text-primary: 17 24 39;
+    --text-secondary: 75 85 99;
+    --text-muted: 107 114 128;
+    --border-color: 229 231 235;
+    --border-light: 209 213 219;
   }
 
   body {
@@ -15,6 +38,11 @@
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
     user-select: none;
+  }
+
+  body.light {
+    background-color: rgb(249 250 251);
+    color: rgb(17 24 39);
   }
 
   ::-webkit-scrollbar {
@@ -30,6 +58,16 @@
   ::-webkit-scrollbar-thumb:hover {
     background: rgb(75 85 99);
   }
+
+  .light ::-webkit-scrollbar-track {
+    background: rgb(243 244 246);
+  }
+  .light ::-webkit-scrollbar-thumb {
+    background: rgb(209 213 219);
+  }
+  .light ::-webkit-scrollbar-thumb:hover {
+    background: rgb(156 163 175);
+  }
 }
 
 @layer components {
@@ -39,6 +77,12 @@
     border-radius: 0.75rem;
     padding: 1rem;
     backdrop-filter: blur(4px);
+  }
+
+  .light .card {
+    background-color: rgb(255 255 255);
+    border-color: rgb(229 231 235);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
   }
 
   .btn-primary {
@@ -71,6 +115,13 @@
   }
   .btn-ghost:hover { background-color: rgb(31 41 55); }
 
+  .light .btn-ghost {
+    color: rgb(75 85 99);
+  }
+  .light .btn-ghost:hover {
+    background-color: rgb(243 244 246);
+  }
+
   .input-field {
     width: 100%;
     background-color: rgb(31 41 55);
@@ -85,6 +136,15 @@
     outline: none;
     box-shadow: 0 0 0 2px rgb(59 130 246 / 0.5);
     border-color: rgb(59 130 246);
+  }
+
+  .light .input-field {
+    background-color: rgb(249 250 251);
+    border-color: rgb(209 213 219);
+    color: rgb(17 24 39);
+  }
+  .light .input-field::placeholder {
+    color: rgb(156 163 175);
   }
 
   .badge {
@@ -123,6 +183,21 @@
     background-color: rgb(59 130 246 / 0.2);
     color: rgb(96 165 250);
   }
+
+  /* Theme-aware text colors */
+  .text-theme-primary { color: rgb(var(--text-primary)); }
+  .text-theme-secondary { color: rgb(var(--text-secondary)); }
+  .text-theme-muted { color: rgb(var(--text-muted)); }
+
+  /* Theme-aware backgrounds */
+  .bg-theme-card { background-color: rgb(var(--bg-card)); }
+  .bg-theme-card-hover { background-color: rgb(var(--bg-card-hover)); }
+  .bg-theme-input { background-color: rgb(var(--bg-input)); }
+  .bg-theme-secondary { background-color: rgb(var(--bg-secondary)); }
+
+  /* Theme-aware borders */
+  .border-theme { border-color: rgb(var(--border-color)); }
+  .border-theme-light { border-color: rgb(var(--border-light)); }
 }
 
 @keyframes fadeIn {

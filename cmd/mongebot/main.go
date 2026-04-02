@@ -154,6 +154,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Token auto-refresher — periodically validate tokens
+	tokenRefresher := token.NewAutoRefresher(tokenMgr, activePlatform, proxyMgr, token.DefaultAutoRefreshConfig(), logger)
+	tokenRefresher.Start(ctx)
+
 	// Load .env file (optional, doesn't override existing env vars)
 	config.LoadDotEnv(".env")
 	config.ApplyEnvOverrides(cfg, logger)

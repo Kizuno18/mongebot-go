@@ -1,0 +1,197 @@
+# Alertmanager rules for MongeBot
+# Save as: alertmanager/mongebot_rules.yml
+# Include in your Prometheus configuration.
+
+groups:
+  - name: mongebot.engine
+    rules:
+      - alert: MongeBotEngineDown
+        expr: mongebot_engine_state{state="running"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: engine
+        annotations:
+          summary: "MongeBot engine is not running"
+          description: "The MongeBot engine has been stopped for more than 1 minute. Expected state: running."
+
+      - alert: MongeBotViewerDrop
+        expr: |
+          (
+            mongebot_active_viewers < (mongebot_total_workers * 0.5)
+            and mongebot_total_workers > 10
+          )
+        for: 5m
+        labels:
+          severity: warning
+          category: engine
+        annotations:
+          summary: "Significant viewer drop detected"
+          description: "Active viewers ({{ $value }}) are less than 50% of total workers ({{ $labels.total_workers }}). This may indicate connection issues."
+
+      - alert: MongeBotNoActiveViewers
+        expr: mongebot_active_viewers == 0 and mongebot_engine_state{state="running"} == 1
+        for: 3m
+        labels:
+          severity: critical
+          category: engine
+        annotations:
+          summary: "No active viewers while engine is running"
+          description: "Engine is running but no active viewers for 3 minutes. Check network connectivity or token validity."
+
+      - alert: MongeBotHighWorkerFailure
+        expr: |
+          (
+            (mongebot_total_workers - mongebot_active_viewers) / mongebot_total_workers > 0.3
+            and mongebot_total_workers > 20
+          )
+        for: 5m
+        labels:
+          severity: warning
+          category: engine
+        annotations:
+          summary: "High worker failure rate"
+          description: "{{ $value | humanizePercentage }} of workers are not active. Check proxy health or rate limits."
+
+  - name: mongebot.proxy
+    rules:
+      - alert: MongeBotProxyPoolDepleted
+        expr: mongebot_proxies_available < 10 and mongebot_proxies_total > 0
+        for: 2m
+        labels:
+          severity: critical
+          category: proxy
+        annotations:
+          summary: "Proxy pool critically low"
+          description: "Only {{ $value }} proxies available. Import more proxies to maintain operations."
+
+      - alert: MongeBotProxyPoolLow
+        expr: |
+          (
+            mongebot_proxies_available < (mongebot_proxies_total * 0.2)
+            and mongebot_proxies_total > 0
+          )
+        for: 5m
+        labels:
+          severity: warning
+          category: proxy
+        annotations:
+          summary: "Proxy pool running low"
+          description: "Available proxies ({{ $value }}) are below 20% of total pool. Consider importing more proxies."
+
+      - alert: MongeBotAllProxiesInUse
+        expr: mongebot_proxies_available == 0 and mongebot_proxies_total > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: proxy
+        annotations:
+          summary: "All proxies are in use"
+          description: "No available proxies in the pool. Scale up the proxy pool or reduce worker count."
+
+      - alert: MongeBotProxyPoolEmpty
+        expr: mongebot_proxies_total == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: proxy
+        annotations:
+          summary: "Proxy pool is empty"
+          description: "No proxies configured. Import proxies to enable viewer connections."
+
+  - name: mongebot.token
+    rules:
+      - alert: MongeBotTokenExhaustion
+        expr: mongebot_tokens_valid < 5 and mongebot_tokens_total > 0
+        for: 2m
+        labels:
+          severity: critical
+          category: token
+        annotations:
+          summary: "Valid tokens critically low"
+          description: "Only {{ $value }} valid tokens remaining. Add more tokens to maintain operations."
+
+      - alert: MongeBotTokenPoolLow
+        expr: |
+          (
+            mongebot_tokens_valid < (mongebot_tokens_total * 0.3)
+            and mongebot_tokens_total > 0
+          )
+        for: 5m
+        labels:
+          severity: warning
+          category: token
+        annotations:
+          summary: "Token pool running low"
+          description: "Valid tokens ({{ $value }}) are below 30% of total pool. Refresh or add more tokens."
+
+      - alert: MongeBotHighTokenQuarantine
+        expr: |
+          (
+            mongebot_tokens_quarantined > (mongebot_tokens_total * 0.5)
+            and mongebot_tokens_total > 0
+          )
+        for: 5m
+        labels:
+          severity: warning
+          category: token
+        annotations:
+          summary: "High token quarantine rate"
+          description: "{{ $value }} tokens are quarantined (more than 50% of pool). Check for API bans or rate limits."
+
+      - alert: MongeBotTokenPoolEmpty
+        expr: mongebot_tokens_total == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: token
+        annotations:
+          summary: "Token pool is empty"
+          description: "No tokens configured. Import tokens to enable viewer authentication."
+
+  - name: mongebot.system
+    rules:
+      - alert: MongeBotHighMemory
+        expr: mongebot_go_memory_alloc_bytes > 1073741824
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory allocation is {{ $value | humanizeBytes }}. Consider reducing worker count or investigating memory leaks."
+
+      - alert: MongeBotHighGoroutines
+        expr: mongebot_go_goroutines > 5000
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High goroutine count"
+          description: "{{ $value }} goroutines running. This may indicate goroutine leaks."
+
+      - alert: MongeBotInstanceRestart
+        expr: increase(mongebot_process_uptime_seconds[5m]) < 0
+        for: 0m
+        labels:
+          severity: info
+          category: system
+        annotations:
+          summary: "MongeBot instance restarted"
+          description: "The MongeBot process was restarted. Check logs for crash reasons."
+
+      - alert: MongeBotLowBandwidth
+        expr: |
+          (
+            rate(mongebot_bytes_received_total[5m]) < 1000
+            and mongebot_engine_state{state="running"} == 1
+            and mongebot_active_viewers > 0
+          )
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "Unusually low bandwidth"
+          description: "Bandwidth is {{ $value | humanize }}B/s despite active viewers. Check stream status or network issues."

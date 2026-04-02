@@ -1,8 +1,28 @@
 import { useState, useEffect } from "react";
-import { History, Clock, Eye, HardDrive, Tv, TrendingUp, Download } from "lucide-react";
+import {
+  History,
+  Clock,
+  Eye,
+  HardDrive,
+  Tv,
+  TrendingUp,
+  Download,
+  ChevronDown,
+  ChevronUp,
+  Activity,
+} from "lucide-react";
 import { ipc } from "../services/ipc";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 interface Session {
   id: number;
@@ -17,6 +37,16 @@ interface Session {
   totalAds: number;
   totalHeartbeats: number;
   endReason: string | null;
+}
+
+interface MetricsSnapshot {
+  timestamp: string;
+  activeViewers: number;
+  totalWorkers: number;
+  segments: number;
+  bytesReceived: number;
+  heartbeats: number;
+  adsWatched: number;
 }
 
 function formatBytes(b: number): string {
@@ -134,8 +164,22 @@ export default function SessionHistory() {
 }
 
 function SessionCard({ session }: { session: Session }) {
+  const [expanded, setExpanded] = useState(false);
+  const [timeline, setTimeline] = useState<MetricsSnapshot[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
+
   const isActive = !session.endedAt;
   const duration = formatDuration(session.startedAt, session.endedAt);
+
+  useEffect(() => {
+    if (expanded && timeline.length === 0) {
+      setLoadingTimeline(true);
+      ipc.call<MetricsSnapshot[]>("sessions.timeline", { sessionId: session.id })
+        .then((data) => setTimeline(data || []))
+        .catch(() => {})
+        .finally(() => setLoadingTimeline(false));
+    }
+  }, [expanded, session.id, timeline.length]);
 
   return (
     <div
@@ -146,7 +190,10 @@ function SessionCard({ session }: { session: Session }) {
     >
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
+        <div
+          className="flex items-center gap-3 cursor-pointer"
+          onClick={() => setExpanded(!expanded)}
+        >
           <Tv size={18} className={isActive ? "text-blue-400" : "text-gray-500"} />
           <div>
             <span className="font-semibold text-gray-100">
@@ -156,6 +203,11 @@ function SessionCard({ session }: { session: Session }) {
               {session.platform}
             </span>
           </div>
+          {expanded ? (
+            <ChevronUp size={14} className="text-gray-500" />
+          ) : (
+            <ChevronDown size={14} className="text-gray-500" />
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -200,6 +252,68 @@ function SessionCard({ session }: { session: Session }) {
           value={session.totalAds.toString()}
         />
       </div>
+
+      {/* Expanded Timeline */}
+      {expanded && (
+        <div className="mt-4 pt-4 border-t border-gray-800/50 animate-fade-in">
+          <h4 className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-2">
+            <Activity size={12} />
+            Session Timeline
+          </h4>
+          {loadingTimeline ? (
+            <div className="h-32 flex items-center justify-center text-gray-600 text-sm">
+              Loading timeline...
+            </div>
+          ) : timeline.length < 2 ? (
+            <div className="h-32 flex items-center justify-center text-gray-600 text-sm">
+              No timeline data available
+            </div>
+          ) : (
+            <div className="h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={timeline} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="viewerGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                  <XAxis
+                    dataKey="timestamp"
+                    stroke="#4b5563"
+                    tick={{ fontSize: 9 }}
+                    tickFormatter={(v) => v?.slice(11, 16) || ""}
+                  />
+                  <YAxis stroke="#4b5563" tick={{ fontSize: 9 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#111827",
+                      border: "1px solid #374151",
+                      borderRadius: "8px",
+                      fontSize: "11px",
+                    }}
+                    labelFormatter={(v) => `Time: ${v}`}
+                    formatter={(value: number, name: string) => [
+                      name === "bytesReceived" ? formatBytes(value) : value,
+                      name === "activeViewers" ? "Viewers" : name,
+                    ]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="activeViewers"
+                    stroke="#3b82f6"
+                    fill="url(#viewerGradient)"
+                    strokeWidth={2}
+                    dot={false}
+                    name="activeViewers"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
       <div className="mt-3 pt-2 border-t border-gray-800/50 text-xs text-gray-600">
