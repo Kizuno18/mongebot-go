@@ -1,7 +1,6 @@
 # MongeBot Token List
 # One OAuth token per line. Lines starting with # are ignored.
 # Tokens are loaded into the token manager at startup.
-# For encrypted storage, use the Token Vault in the UI.
 #
 # Example (replace with real tokens):
 # abc123def456ghi789jkl012mno345pqr

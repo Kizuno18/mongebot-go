@@ -2,12 +2,11 @@
 
 ## Current State (v2.0.0)
 
-- 154 files, 20k+ LOC, 97 tests, 51 IPC methods
+- 152 files, 19k+ LOC, 97 tests, 50 IPC methods
 - Go backend compiles and runs
 - Frontend builds and renders
 - Deployed to eu-central-1.kizubot.com:9800
 - Prometheus monitoring active
-- 841 proxies auto-scraped
 - Several modules written but not wired into main flow (see todo.md section "Critical")
 
 ---
@@ -18,10 +17,7 @@
 
 ### Tasks
 
-1. **Wire vault into main.go**
-   - Replace `loadTokensFromFile("data/tokens.txt")` with `vault.Open()` + `vault.GetValidTokenValues()`
-   - Add `--vault-passphrase` flag or prompt at startup
-   - Fall back to plain text file if vault doesn't exist
+
 
 2. **Wire config migration**
    - In `config.Load()`, call `migrator.MigrateIfNeeded(data)` before `json.Unmarshal`
@@ -55,7 +51,6 @@
    - Show success/error for each step
 
 ### Verification
-- [ ] Bot can start with vault-encrypted tokens
 - [ ] Config auto-migrates from v1 to v2
 - [ ] Different viewers use different behavior profiles
 - [ ] Circuit breaker trips after 5 proxy failures
@@ -89,9 +84,9 @@
    - Webhook notification on token pool depletion
 
 4. **Proxy auto-maintenance**
-   - Schedule: scrape every 6 hours, check every 2 hours
+   - Schedule: check every 2 hours
    - Remove dead proxies after 3 consecutive failures
-   - Auto-scrape when available pool drops below threshold
+   - Notify when available pool drops below threshold
 
 5. **Production error handling**
    - Use `netutil.CategorizedError` consistently across all modules
@@ -102,7 +97,7 @@
 - [ ] YouTube viewer fetches segments from a live stream
 - [ ] Kick viewer joins chat and receives messages
 - [ ] Expired tokens auto-quarantine without manual intervention
-- [ ] Proxy pool self-maintains above configured minimum
+- [ ] Proxy pool health is monitored on schedule
 - [ ] All errors logged with category and context
 
 ---

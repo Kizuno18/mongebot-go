@@ -4,7 +4,7 @@
 
 These modules exist but are not connected to the main flow.
 
-- [ ] Wire vault into main.go (replace token file loading with encrypted vault)
+
 - [ ] Wire config migration into config.Load() (call MigrateIfNeeded before parse)
 - [ ] Wire behavior profiles into viewer (use profile timings instead of hardcoded)
 - [ ] Wire circuit breaker into viewer HTTP calls (wrap GQL/HLS requests)
@@ -41,7 +41,7 @@ These modules exist but are not connected to the main flow.
 - [ ] Add Telegram bot command interface (/start, /stop, /status)
 - [ ] Add Discord bot command interface
 - [ ] Add browser extension for one-click token extraction
-- [ ] Add proxy pool auto-maintain (scrape + check on schedule)
+- [ ] Add proxy pool auto-maintain (check on schedule)
 - [ ] Add viewer count target mode (scale workers to maintain target count)
 - [ ] Add bandwidth limiting per viewer
 - [ ] Add custom GQL operation hash updater (detect when Twitch changes hashes)
@@ -52,7 +52,7 @@ These modules exist but are not connected to the main flow.
 ## Priority: Technical Debt
 
 - [ ] Remove `_ = monitor` in main.go (actually use it or remove)
-- [ ] Consolidate token loading (file vs vault vs manager — pick one path)
+
 - [ ] Standardize error handling (use pkg/netutil/errors everywhere)
 - [ ] Add godoc comments to all exported functions
 - [ ] Add OpenAPI/Swagger spec for the JSON-RPC API
@@ -64,12 +64,12 @@ These modules exist but are not connected to the main flow.
 
 - [x] Go rewrite from Python (20k+ LOC)
 - [x] Tauri 2.0 desktop app with 10 pages
-- [x] 51 WebSocket JSON-RPC methods
+- [x] 50 WebSocket JSON-RPC methods
 - [x] 3 platform providers (Twitch full, Kick full, YouTube stub)
 - [x] 97 tests + 15 benchmarks passing
 - [x] Docker build + deploy to eu-central-1
 - [x] Prometheus monitoring integration
-- [x] 841 proxies auto-scraped
+
 - [x] GitHub release v2.0.0 with 6 cross-compiled binaries
 - [x] CI/CD pipeline (GitHub Actions)
 - [x] Integration PRs for api-server and dashboard

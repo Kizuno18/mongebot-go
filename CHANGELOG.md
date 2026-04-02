@@ -11,10 +11,10 @@ All notable changes to MongeBot Go are documented here.
 - Plugin-based platform architecture (Twitch, Kick, YouTube)
 - Multi-channel engine with independent goroutine worker pools
 - Multi-account profile system with per-channel config overrides
-- Proxy management: 4 rotation strategies, concurrent health checker, auto-scraper (3 public APIs)
+- Proxy management: 4 rotation strategies, concurrent health checker, geolocation enrichment
 - Token management: pool with rotation, validation, quarantine, auto-quarantine after 3 errors
 - Token import: 4 formats (raw text, JSON array, Netscape cookies, EditThisCookie)
-- Encrypted vault: AES-256-GCM with PBKDF2 key derivation (600k iterations)
+
 - SQLite persistence: sessions, metrics snapshots, profiles, proxy health log
 - FFmpeg restreaming: 5 quality presets (potato to ultra), proxy support, auto-restart
 - Scheduler: stream-live auto-detect trigger, time-of-day schedules, weekday filters, max duration
@@ -25,7 +25,7 @@ All notable changes to MongeBot Go are documented here.
 - Typed error system: 7 categories with retry policies
 - Proxy geolocation enrichment via ip-api.com
 - Config migration system (v0 -> v1 -> v2)
-- Config archive: encrypted export/import for portability
+- Config archive: export/import for portability
 - Environment variable overrides with .env file support
 - Graceful shutdown with connection drain and final metrics
 - WebSocket JSON-RPC 2.0 API: 40 methods
@@ -51,7 +51,7 @@ All notable changes to MongeBot Go are documented here.
 - Error boundaries with fallback UI
 - Connection overlay for disconnection states
 - Skeleton loaders for loading states
-- Proxy auto-scraper UI with inline results
+
 - Token import with 3 format tabs (Raw/Cookies/JSON)
 - FFmpeg quality preset selector (5 presets)
 - Schedule rule creator (stream-live + time-based triggers)

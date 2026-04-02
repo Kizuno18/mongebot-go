@@ -28,7 +28,6 @@ import (
 	"github.com/Kizuno18/mongebot-go/internal/storage"
 	"github.com/Kizuno18/mongebot-go/internal/stream"
 	"github.com/Kizuno18/mongebot-go/internal/token"
-	"github.com/Kizuno18/mongebot-go/internal/vault"
 	"github.com/Kizuno18/mongebot-go/pkg/useragent"
 )
 
@@ -103,8 +102,7 @@ func main() {
 	total, _, _ := proxyMgr.Count()
 	logger.Info("proxies loaded", "count", total)
 
-	// Proxy scraper
-	proxyScraper := proxy.NewScraper(logger)
+
 
 	// User-agent pool with auto-updater
 	uaPool := useragent.NewPool()
@@ -115,17 +113,11 @@ func main() {
 	uaUpdater := useragent.NewUpdater(uaPool, logger)
 	go uaUpdater.AutoUpdate(ctx, 24*time.Hour)
 
-	// Token manager — try vault first, fall back to plain text
+	// Token manager — load from plain text
 	tokenMgr := token.NewManager(logger)
-	vaultTokens := loadTokensFromVault("data/vault.enc", logger)
-	if len(vaultTokens) > 0 {
-		tokenMgr.AddBulk(vaultTokens, "twitch")
-		logger.Info("tokens loaded from vault", "count", len(vaultTokens))
-	} else {
-		rawTokens := loadTokensFromFile("data/tokens.txt")
-		if len(rawTokens) > 0 {
-			tokenMgr.AddBulk(rawTokens, "twitch")
-		}
+	rawTokens := loadTokensFromFile("data/tokens.txt")
+	if len(rawTokens) > 0 {
+		tokenMgr.AddBulk(rawTokens, "twitch")
 	}
 	tTotal, tValid, _, _, _ := tokenMgr.Stats()
 	logger.Info("tokens loaded", "total", tTotal, "valid", tValid)
@@ -208,7 +200,7 @@ func main() {
 		AccountMgr:   accountMgr,
 		TokenMgr:     tokenMgr,
 		StreamMgr:    streamMgr,
-		ProxyScraper: proxyScraper,
+
 		ProxyMgr:     proxyMgr,
 		Platform:     activePlatform,
 		Logger:       logger,
@@ -302,17 +294,4 @@ func loadTokensFromFile(path string) []string {
 	return tokens
 }
 
-func loadTokensFromVault(path string, logger *slog.Logger) []string {
-	passphrase := os.Getenv("MONGEBOT_VAULT_PASSPHRASE")
-	if passphrase == "" {
-		return nil // No vault passphrase — skip vault
-	}
 
-	v, err := vault.Open(path, passphrase)
-	if err != nil {
-		logger.Warn("vault open failed, falling back to plain text", "error", err)
-		return nil
-	}
-
-	return v.GetValidTokenValues("")
-}

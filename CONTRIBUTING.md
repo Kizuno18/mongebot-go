@@ -85,11 +85,10 @@ internal/      Private application code
   engine/      Worker pool, scheduler, event bus, shutdown
   logger/      Structured logging with ring buffer
   platform/    Plugin interface + providers (twitch, kick, youtube)
-  proxy/       Proxy pool, checker, scraper, geolocation
+  proxy/       Proxy pool, checker, geolocation
   storage/     SQLite persistence
   stream/      FFmpeg restreaming
   token/       Token pool, validator, importer
-  vault/       Encrypted storage
 pkg/           Public reusable packages
   fingerprint/ Device ID, TLS fingerprint rotation
   netutil/     Retry, circuit breaker, errors, IP utils
@@ -104,7 +103,7 @@ frontend/      React + Tauri UI
 - camelCase for variables/functions, PascalCase for types
 - kebab-case for file names
 - Tests in `*_test.go` files alongside source
-- No hardcoded secrets — use config, env vars, or vault
+- No hardcoded secrets — use config or env vars
 
 ## Adding a New Platform
 

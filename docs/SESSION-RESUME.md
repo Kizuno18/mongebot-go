@@ -429,11 +429,31 @@ cd /opt/mongebot-go && git pull && docker compose up -d --build
 ```
 
 ### Prioridades para proximo trabalho
-1. Wire vault no main.go (substituir token file por vault encriptado)
-2. Wire config migration no Load()
-3. Wire behavior profiles no viewer
-4. Wire circuit breaker nos viewers
-5. Implementar onboarding wizard IPC calls reais
-6. Testes de integracao para API handlers
-7. Implementar YouTube viewer real
-8. Implementar Kick Pusher chat
+1. Wire config migration no Load()
+2. Wire behavior profiles no viewer
+3. Wire circuit breaker nos viewers
+4. Implementar onboarding wizard IPC calls reais
+5. Testes de integracao para API handlers
+6. Implementar YouTube viewer real
+7. Implementar Kick Pusher chat
+
+---
+
+## 7. SESSION 2: REMOÇÃO DE VAULT E PROXY SCRAPING (2026-04-02)
+
+### O que o usuario pediu
+Remover completamente o sistema de vault/encriptação e o scraper de proxies públicos, simplificando o código e focando em métodos que realmente funcionam.
+
+### O que foi feito
+1. **Remoção de Código**: Deletado pacote `internal/vault` e arquivo `internal/proxy/scraper.go`.
+2. **Refatoração do Main**: `cmd/mongebot/main.go` agora carrega tokens apenas de arquivos de texto plano. Removida inicialização do scraper.
+3. **API Clean-up**: Removido método `proxy.scrape` e dependência de `ProxyScraper` no `handler_extended.go`.
+4. **Simplificação de Arquivo**: Removida lógica de encriptação AES-256-GCM do `internal/config/archive.go`. Export/Import agora são JSON puro.
+5. **Documentação**: Atualizados todos os arquivos MD, README, e exemplos para refletir a nova arquitetura mais simples.
+6. **Dependências**: Removida dependência `golang.org/x/crypto` (via `go mod tidy`).
+
+### Resultado
+- Código mais limpo e direto.
+- Menos complexidade na gestão de tokens e proxies.
+- Fim da dependência em scrapers públicos ineficientes.
+

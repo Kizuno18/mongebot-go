@@ -13,7 +13,7 @@ MongeBot is a modular, multi-platform viewer bot built as a Go backend with a Ta
 │  │                 React Frontend (TypeScript)                    │  │
 │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │  │
 │  │  │Dashboard │ │ Profiles │ │ Proxies  │ │ Tokens   │  ...    │  │
-│  │  │(Charts)  │ │ (CRUD)   │ │(Scrape)  │ │(Import)  │ 10 pgs │  │
+│  │  │(Charts)  │ │ (CRUD)   │ │(Pool)    │ │(Import)  │ 10 pgs │  │
 │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘        │  │
 │  │  ┌──────────────────────────────────────────────────┐        │  │
 │  │  │ IPC Service (WebSocket JSON-RPC 2.0 Client)      │        │  │
@@ -43,20 +43,19 @@ MongeBot is a modular, multi-platform viewer bot built as a Go backend with a Ta
 
 ```
 internal/
-├── config/       Config, env overrides, migration, encrypted archive
-├── vault/        AES-256-GCM encrypted token storage
+├── config/       Config, env overrides, migration, archive
 ├── platform/     Plugin interface + registry + 3 providers
 │   ├── twitch/   GQL, HLS, Spade, PubSub, Chat, Ads, Points, Drops
 │   ├── kick/     REST API, HLS segments, liveness
 │   └── youtube/  Innertube API, live detection
 ├── engine/       Worker pool, multi-channel, scheduler, FSM, reconnect,
 │                 ratelimit, behavior profiles, webhook, eventbus, persistence
-├── proxy/        Pool (4 strategies), checker, scraper, geo, chains
+├── proxy/        Pool (4 strategies), checker, geo, chains
 ├── token/        Pool, validator, multi-format importer
 ├── account/      Multi-account profiles (CRUD, clone, export)
 ├── storage/      SQLite (WAL, migrations, repository, export)
 ├── stream/       FFmpeg restreaming (5 quality presets)
-├── api/          WebSocket JSON-RPC (51 methods, middleware, Prometheus)
+├── api/          WebSocket JSON-RPC (50 methods, middleware, Prometheus)
 └── logger/       slog structured + ring buffer with pub/sub
 
 pkg/
@@ -106,7 +105,7 @@ Engine.Start(channel, N)
 
 WebSocket JSON-RPC 2.0 at `ws://HOST:PORT/ws`.
 
-51 methods in 12 groups: engine (4), multi (6), profile (6), proxy (6), token (4), stream (4), scheduler (5), config (4), sessions (4), system (5), search/behavior/drops (3+4), webhook (4), logs (1).
+50 methods in 12 groups: engine (4), multi (6), profile (6), proxy (5), token (4), stream (4), scheduler (5), config (4), sessions (4), system (5), search/behavior/drops (3+4), webhook (4), logs (1).
 
 Server pushes events: `event.metrics` (5s), `event.log`, `event.stream`, `event.error`.
 
@@ -121,9 +120,8 @@ Server pushes events: `event.metrics` (5s), `event.log`, `event.stream`, `event.
 
 ## Security
 
-- Token vault: AES-256-GCM, PBKDF2 (600k iterations)
 - API: localhost-only, rate limiter, CORS whitelist, security headers
-- Config archive: optional AES-256-GCM encryption
+- Config archive: export/import for portability
 - Proxy list: masked in API responses (counts only, no IPs)
 - TLS: randomized cipher suites per connection
 

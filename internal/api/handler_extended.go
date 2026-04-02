@@ -22,7 +22,7 @@ type ExtendedDeps struct {
 	AccountMgr   *account.Manager
 	TokenMgr     *token.Manager
 	StreamMgr    *stream.Manager
-	ProxyScraper *proxy.Scraper
+
 	ProxyMgr     *proxy.Manager
 	Platform     platform.Platform
 	Logger       *slog.Logger
@@ -64,7 +64,7 @@ func getExtendedHandler(method string) (handlerFunc, bool) {
 		"stream.presets":        handleStreamPresets,
 
 		// Scraper methods
-		"proxy.scrape": handleProxyScrape,
+
 
 		// Session history
 		"sessions.recent":   handleSessionsRecent,
@@ -289,24 +289,7 @@ func handleStreamPresets(_ context.Context, _ json.RawMessage) (any, error) {
 	return stream.GetPresets(), nil
 }
 
-// --- Scraper Handler ---
 
-func handleProxyScrape(ctx context.Context, _ json.RawMessage) (any, error) {
-	if globalExtDeps.ProxyScraper == nil {
-		return nil, fmt.Errorf("proxy scraper not initialized")
-	}
-
-	if globalExtDeps.ProxyMgr == nil {
-		return nil, fmt.Errorf("proxy manager not initialized")
-	}
-
-	added, err := globalExtDeps.ProxyScraper.ScrapeAndImport(ctx, globalExtDeps.ProxyMgr)
-	if err != nil {
-		return nil, err
-	}
-	total, available, _ := globalExtDeps.ProxyMgr.Count()
-	return map[string]any{"added": added, "total": total, "available": available}, nil
-}
 
 // --- Session Handler ---
 
@@ -371,15 +354,9 @@ func handleProxyGeoStats(_ context.Context, _ json.RawMessage) (any, error) {
 // --- Config Archive Handlers ---
 
 type archiveExportParams struct {
-	Passphrase string `json:"passphrase"`
 }
 
 func handleConfigExport(_ context.Context, params json.RawMessage) (any, error) {
-	var p archiveExportParams
-	if err := json.Unmarshal(params, &p); err != nil {
-		p.Passphrase = "" // No encryption if no passphrase
-	}
-
 	// Get profiles data
 	var profilesJSON json.RawMessage
 	if globalExtDeps.AccountMgr != nil {
@@ -389,21 +366,19 @@ func handleConfigExport(_ context.Context, params json.RawMessage) (any, error) 
 		}
 	}
 
-	archive, err := config.ExportArchive(nil, profilesJSON, nil, p.Passphrase)
+	archive, err := config.ExportArchive(nil, profilesJSON, nil)
 	if err != nil {
 		return nil, fmt.Errorf("export failed: %w", err)
 	}
 
 	return map[string]any{
 		"data":      string(archive),
-		"encrypted": p.Passphrase != "",
 		"size":      len(archive),
 	}, nil
 }
 
 type archiveImportParams struct {
-	Data       string `json:"data"`
-	Passphrase string `json:"passphrase"`
+	Data string `json:"data"`
 }
 
 func handleConfigImport(_ context.Context, params json.RawMessage) (any, error) {
@@ -412,7 +387,7 @@ func handleConfigImport(_ context.Context, params json.RawMessage) (any, error) 
 		return nil, err
 	}
 
-	archive, err := config.ImportArchive([]byte(p.Data), p.Passphrase)
+	archive, err := config.ImportArchive([]byte(p.Data))
 	if err != nil {
 		return nil, fmt.Errorf("import failed: %w", err)
 	}

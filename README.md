@@ -20,16 +20,13 @@ Modular, multi-platform viewer bot rewritten from Python to Go with a Tauri 2.0 
 **Proxy Management**
 - 4 rotation strategies: round-robin, random, least-used, fastest
 - Concurrent health checker with latency measurement
-- Auto-scraper fetching from 3 public APIs (ProxyScrape HTTP/SOCKS5, GeoNode)
 - IP geolocation enrichment (country tagging, flag mapping)
 - Proxy chain support for multi-hop anonymization
-- 841+ proxies auto-scraped on first run
 
 **Token Management**
 - Pool with rotation, validation, quarantine, and auto-quarantine after 3 errors
 - Multi-format import: raw text, JSON array, Netscape cookies, EditThisCookie (browser extension)
 - Concurrent batch validation with progress reporting
-- AES-256-GCM encrypted vault with PBKDF2 key derivation (600k iterations)
 
 **Anti-Detection**
 - TLS fingerprint rotation across 4 browser profiles (Chrome, Firefox, Safari, Edge)
@@ -209,7 +206,6 @@ The backend exposes a WebSocket JSON-RPC 2.0 API at `ws://HOST:PORT/ws` plus HTT
 | `proxy.list` | — | Pool stats + proxy list |
 | `proxy.import` | `{proxies: []}` | Bulk import |
 | `proxy.check` | — | Run health check |
-| `proxy.scrape` | — | Scrape + auto-import from public APIs |
 | `proxy.geoEnrich` | — | Fetch country data for all proxies |
 | `proxy.geoStats` | — | Country distribution |
 
@@ -271,8 +267,8 @@ The backend exposes a WebSocket JSON-RPC 2.0 API at `ws://HOST:PORT/ws` plus HTT
 |--------|--------|-------------|
 | `config.get` | — | Current config |
 | `config.set` | `{...overrides}` | Update config |
-| `config.export` | `{passphrase}` | Encrypted archive |
-| `config.import` | `{data, passphrase}` | Import archive |
+| `config.export` | — | Plain JSON archive |
+| `config.import` | `{data}` | Import archive |
 
 </details>
 
@@ -365,11 +361,11 @@ mongebot-go/
 │   │   ├── twitch/            # Full: GQL, HLS, Spade, PubSub, Chat, Ads, Points, Drops
 │   │   ├── kick/              # Full: API, HLS segments, liveness
 │   │   └── youtube/           # Stub: Innertube API, live detection
-│   ├── proxy/                 # Pool, checker, scraper, geo, chains
+│   ├── proxy/                 # Pool, checker, geolocation
 │   ├── storage/               # SQLite persistence, repository, export
 │   ├── stream/                # FFmpeg restreaming (5 presets)
 │   ├── token/                 # Pool, validator, multi-format importer
-│   └── vault/                 # AES-256-GCM encrypted storage
+│   
 ├── pkg/
 │   ├── fingerprint/           # Device ID, TLS rotation, browser profiles
 │   ├── netutil/               # Retry, circuit breaker, typed errors, IP utils
@@ -393,7 +389,7 @@ mongebot-go/
 | Desktop | Tauri 2.0 (Rust) | ~2MB bundle, native webview |
 | WebSocket | coder/websocket | Context-aware, concurrent-safe |
 | Database | SQLite (modernc.org/sqlite) | Pure Go, no CGO, portable |
-| Encryption | AES-256-GCM + PBKDF2 | Vault security, OWASP compliant |
+| Encryption | None | Simplified architecture |
 | Charts | Recharts | React-native charting |
 | Icons | Lucide React | Consistent icon set |
 | CI/CD | GitHub Actions | Test, lint, build, bundle |
